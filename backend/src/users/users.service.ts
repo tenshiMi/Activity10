@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
@@ -27,8 +27,8 @@ export class UsersService {
     });
   }
 
-  // 2. Find by Email (For Login) - ADD THIS NEW FUNCTION
- // Update the return type to allow null
+  // 2. Find by Email (For Login)
+  // Update the return type to allow null
   async findOneByEmail(email: string): Promise<User | null> {
     return this.usersRepository.findOne({ where: { email } });
   }
@@ -39,5 +39,13 @@ export class UsersService {
 
   async remove(id: number) {
     return await this.usersRepository.delete(id);
+  }
+
+  // ==========================================
+  // NEW METHOD: Update User (For OTP & Password Reset)
+  // ==========================================
+  async update(id: number, updateData: Partial<User>) {
+    await this.usersRepository.update(id, updateData);
+    return this.usersRepository.findOne({ where: { id } });
   }
 }

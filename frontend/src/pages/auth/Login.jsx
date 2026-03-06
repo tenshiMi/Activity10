@@ -1,38 +1,31 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Mail, Lock, LogIn, AlertCircle } from 'lucide-react'; // <--- Added AlertCircle icon
+import { Mail, Lock, LogIn, AlertCircle } from 'lucide-react';
 
 export default function Login() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [isLoading, setIsLoading] = useState(false);
-  
-  // 1. New State for handling the error message
   const [errorMessage, setErrorMessage] = useState('');
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-    // Optional: Clear error when user starts typing again
     if (errorMessage) setErrorMessage('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    setErrorMessage(''); // Clear previous errors on new submit
+    setErrorMessage(''); 
 
     try {
-      // Send credentials
       const response = await axios.post('http://localhost:3000/auth/login', formData);
-      
       const { access_token, user } = response.data;
 
-      // Save to local storage
       localStorage.setItem('token', access_token);
       localStorage.setItem('user', JSON.stringify(user));
 
-      // Redirect based on Role
       if (user.role === 'Admin') {
         navigate('/admin');
       } else if (user.role === 'Organizer') {
@@ -43,9 +36,6 @@ export default function Login() {
 
     } catch (error) {
       console.error("Login Error:", error);
-      
-      // 2. REPLACED ALERT WITH STATE UPDATE
-      // Instead of alert(), we set the message to show in the UI
       setErrorMessage("Invalid Email or Password. Please try again.");
     } finally {
       setIsLoading(false);
@@ -64,16 +54,12 @@ export default function Login() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          
-          {/* 3. ERROR MESSAGE DISPLAY BLOCK */}
-          {/* This only renders if there is an error */}
           {errorMessage && (
             <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg flex items-center gap-2 text-sm animate-pulse">
               <AlertCircle size={18} />
               <span>{errorMessage}</span>
             </div>
           )}
-          {/* END ERROR BLOCK */}
 
           {/* Email */}
           <div>
@@ -90,7 +76,12 @@ export default function Login() {
 
           {/* Password */}
           <div>
-            <label className="block text-xs font-bold text-gray-600 uppercase mb-1">Password</label>
+            <div className="flex justify-between items-center mb-1">
+              <label className="block text-xs font-bold text-gray-600 uppercase">Password</label>
+              <Link to="/forgot-password" className="text-xs text-purple-600 hover:text-purple-800 font-semibold transition">
+                Forgot Password?
+              </Link>
+            </div>
             <div className="relative">
               <Lock className="absolute left-3 top-3 text-gray-400" size={18} />
               <input 

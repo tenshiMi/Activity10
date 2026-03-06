@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Login from './pages/auth/Login';
 import Signup from './pages/auth/Signup';
+import ForgotPassword from './pages/auth/ForgotPassword'; // <--- NEW IMPORT
 import Navbar from './components/Navbar';
 
 // Attendee Pages
@@ -27,6 +28,7 @@ function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} /> {/* <--- NEW ROUTE */}
 
         {/* === ATTENDEE ROUTES === */}
         <Route path="/" element={<Home />} />

@@ -19,4 +19,10 @@ export class User {
 
   @Column({ default: true })
   isActive: boolean;
+
+  @Column({ type: 'varchar', nullable: true })
+  resetOtp: string | null;
+
+  @Column({ type: 'datetime', nullable: true })
+  resetOtpExpires: Date | null;
 }
