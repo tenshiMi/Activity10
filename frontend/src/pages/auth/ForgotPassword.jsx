@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, KeyRound, Lock, AlertCircle, ArrowLeft } from 'lucide-react';
-import axios from 'axios'; // <-- Uncommented!
+import { Mail, KeyRound, Lock, AlertCircle, ArrowLeft, CheckCircle, XCircle } from 'lucide-react';
+import axios from 'axios';
 
 export default function ForgotPassword() {
   const navigate = useNavigate();
@@ -14,13 +14,21 @@ export default function ForgotPassword() {
   const [otp, setOtp] = useState('');
   const [passwords, setPasswords] = useState({ newPassword: '', confirmPassword: '' });
 
+  // Real-time Validation for New Password
+  const passwordRules = {
+    length: passwords.newPassword.length >= 6,
+    uppercase: /[A-Z]/.test(passwords.newPassword),
+    number: /[0-9]/.test(passwords.newPassword),
+    specialChar: /[!@#$%^&*(),.?":{}|<>]/.test(passwords.newPassword),
+  };
+  const isPasswordValid = Object.values(passwordRules).every(Boolean);
+
   const handleSendEmail = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setErrorMessage('');
     
     try {
-      // REAL API CALL TO BACKEND
       await axios.post('http://localhost:3000/auth/forgot-password', { email });
       setStep(2);
     } catch (error) {
@@ -36,7 +44,6 @@ export default function ForgotPassword() {
     setErrorMessage('');
 
     try {
-      // REAL API CALL TO BACKEND
       await axios.post('http://localhost:3000/auth/verify-otp', { email, otp });
       setStep(3);
     } catch (error) {
@@ -51,14 +58,21 @@ export default function ForgotPassword() {
     setIsLoading(true);
     setErrorMessage('');
 
+    // Check if it meets the strong password rules
+    if (!isPasswordValid) {
+      setErrorMessage("Please make sure your new password meets all the security requirements.");
+      setIsLoading(false);
+      return;
+    }
+
+    // Check if passwords match
     if (passwords.newPassword !== passwords.confirmPassword) {
-      setErrorMessage("Passwords do not match!");
+      setErrorMessage("Passwords do not match. Please try again.");
       setIsLoading(false);
       return;
     }
 
     try {
-      // REAL API CALL TO BACKEND
       await axios.post('http://localhost:3000/auth/reset-password', { 
         email, 
         otp, 
@@ -73,6 +87,13 @@ export default function ForgotPassword() {
       setIsLoading(false);
     }
   };
+
+  const RequirementItem = ({ isValid, text }) => (
+    <div className={`flex items-center gap-2 text-xs transition-colors duration-300 ${isValid ? 'text-green-600' : 'text-gray-400'}`}>
+      {isValid ? <CheckCircle size={14} /> : <XCircle size={14} />}
+      <span>{text}</span>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-100 flex items-center justify-center p-4">
@@ -113,6 +134,9 @@ export default function ForgotPassword() {
                 <Mail className="absolute left-3 top-3 text-gray-400" size={18} />
                 <input 
                   required type="email" placeholder="john@example.com" value={email}
+                  autoComplete="off"
+                  readOnly 
+                  onFocus={(e) => e.target.removeAttribute('readonly')}
                   className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition"
                   onChange={(e) => { setEmail(e.target.value); setErrorMessage(''); }}
                 />
@@ -132,7 +156,8 @@ export default function ForgotPassword() {
               <div className="relative">
                 <KeyRound className="absolute left-3 top-3 text-gray-400" size={18} />
                 <input 
-                  required type="text" placeholder="Enter 6-digit code" value={otp} maxLength={6}
+                  required type="text" placeholder="123456" value={otp} maxLength={6}
+                  autoComplete="off"
                   className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition tracking-widest text-center font-bold text-lg"
                   onChange={(e) => { setOtp(e.target.value); setErrorMessage(''); }}
                 />
@@ -154,13 +179,21 @@ export default function ForgotPassword() {
           <form onSubmit={handleResetPassword} className="space-y-5">
             <div>
               <label className="block text-xs font-bold text-gray-600 uppercase mb-1">New Password</label>
-              <div className="relative">
+              <div className="relative mb-2">
                 <Lock className="absolute left-3 top-3 text-gray-400" size={18} />
                 <input 
-                  required type="password" placeholder="••••••••" value={passwords.newPassword}
+                  required type="password" placeholder="--------" value={passwords.newPassword}
+                  autoComplete="new-password"
                   className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition"
                   onChange={(e) => { setPasswords({...passwords, newPassword: e.target.value}); setErrorMessage(''); }}
                 />
+              </div>
+              
+              <div className="bg-gray-50 p-3 rounded-lg border border-gray-100 space-y-1.5 mt-1">
+                <RequirementItem isValid={passwordRules.length} text="At least 6 characters long" />
+                <RequirementItem isValid={passwordRules.uppercase} text="Contains 1 uppercase letter" />
+                <RequirementItem isValid={passwordRules.number} text="Contains 1 number" />
+                <RequirementItem isValid={passwordRules.specialChar} text="Contains 1 special character" />
               </div>
             </div>
             <div>
@@ -168,13 +201,17 @@ export default function ForgotPassword() {
               <div className="relative">
                 <Lock className="absolute left-3 top-3 text-gray-400" size={18} />
                 <input 
-                  required type="password" placeholder="••••••••" value={passwords.confirmPassword}
+                  required type="password" placeholder="--------" value={passwords.confirmPassword}
+                  autoComplete="new-password"
                   className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition"
                   onChange={(e) => { setPasswords({...passwords, confirmPassword: e.target.value}); setErrorMessage(''); }}
                 />
               </div>
             </div>
-            <button disabled={isLoading} className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-lg transition shadow-lg mt-2 disabled:opacity-50">
+            <button 
+              disabled={isLoading || (passwords.newPassword.length > 0 && !isPasswordValid)} 
+              className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-lg transition shadow-lg mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               {isLoading ? 'Resetting...' : 'Reset Password'}
             </button>
           </form>

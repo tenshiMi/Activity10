@@ -4,6 +4,7 @@ import { AuthController } from './auth.controller';
 import { UsersModule } from '../users/users.module';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
+import { GoogleStrategy } from './google.strategy'; // <-- 1. Imported here
 
 @Module({
   imports: [
@@ -15,6 +16,6 @@ import { PassportModule } from '@nestjs/passport';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService],
+  providers: [AuthService, GoogleStrategy], // <-- 2. Added to providers here
 })
 export class AuthModule {}

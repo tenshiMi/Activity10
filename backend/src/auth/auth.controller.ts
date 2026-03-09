@@ -1,8 +1,8 @@
-import { Controller, Post, Body, UnauthorizedException, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Body, UnauthorizedException, HttpCode, HttpStatus, Get, UseGuards, Req, Res } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
-// NEW: Import the DTOs for the forgot password flow
 import { ForgotPasswordDto, VerifyOtpDto, ResetPasswordDto } from './dto/forgot-password.dto';
 
 @ApiTags('auth')
@@ -19,19 +19,17 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Login successful, returns access token' })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
   async login(@Body() loginDto: LoginDto) {
-    // 1. Check credentials
     const user = await this.authService.validateUser(loginDto.email, loginDto.password);
 
     if (!user) {
       throw new UnauthorizedException('Invalid Credentials');
     }
 
-    // 2. Return Token
     return this.authService.login(user);
   }
 
   // ==========================================
-  // NEW ENDPOINTS FOR FORGOT PASSWORD
+  // EXISTING ENDPOINTS FOR FORGOT PASSWORD
   // ==========================================
 
   @Post('forgot-password')
@@ -49,7 +47,6 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'OTP verified successfully' })
   @ApiResponse({ status: 400, description: 'Invalid or expired OTP' })
   async verifyOtp(@Body() body: VerifyOtpDto) {
-    // We only return the success message to the client, keeping the user object secure on the backend
     const result = await this.authService.verifyOtp(body.email, body.otp);
     return { message: result.message };
   }
@@ -61,5 +58,31 @@ export class AuthController {
   @ApiResponse({ status: 400, description: 'Invalid or expired OTP' })
   async resetPassword(@Body() body: ResetPasswordDto) {
     return this.authService.resetPassword(body.email, body.otp, body.newPassword);
+  }
+
+  // ==========================================
+  // NEW ENDPOINTS FOR GOOGLE LOGIN
+  // ==========================================
+
+  @Get('google')
+  @UseGuards(AuthGuard('google'))
+  @ApiOperation({ summary: 'Initiate Google OAuth login' })
+  async googleAuth(@Req() req) {
+    // This triggers the Passport Strategy. It redirects the user to Google's login page.
+  }
+
+  @Get('google/callback')
+  @UseGuards(AuthGuard('google'))
+  @ApiOperation({ summary: 'Google OAuth callback URL' })
+  async googleAuthRedirect(@Req() req, @Res() res) {
+    // Google sends the user back here with their profile info
+    // The GoogleStrategy has already saved/found the user by this point
+    
+    // Generate your standard JWT token using the exact same method as normal login
+    const tokenData = await this.authService.login(req.user);
+
+    // Redirect the user back to your React frontend, passing the token in the URL
+    // (Make sure your React app is running on port 5173!)
+    return res.redirect(`http://localhost:5173/login?token=${tokenData.access_token}&user=${encodeURIComponent(JSON.stringify(tokenData.user))}`);
   }
 }
