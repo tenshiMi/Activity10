@@ -7,8 +7,8 @@ import { UsersService } from '../users/users.service';
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   constructor(private usersService: UsersService) {
     super({
-      clientID: 'process.env.GOOGLE_CLIENT_ID',         // <-- PASTE YOUR ID HERE
-      clientSecret: 'process.env.GOOGLE_CLIENT_SECRET', // <-- PASTE YOUR SECRET HERE
+      clientID: 'dcvscg',         // <-- PASTE YOUR ID HERE
+      clientSecret: 'sdjhbs', // <-- PASTE YOUR SECRET HERE
       callbackURL: 'http://localhost:3000/auth/google/callback', // Must match Google Console exactly
       scope: ['email', 'profile'],
     });

@@ -31,4 +31,7 @@ export class Event {
 
     @Column()
     organizerId: number; // Add organizer ID to associate events with creators
+
+    @Column({ default: false })
+    isArchived: boolean;
 }

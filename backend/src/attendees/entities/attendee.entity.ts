@@ -22,4 +22,7 @@ export class Attendee {
 
     @Column()
     ticketId: string;
+
+    @Column({ default: '0' })
+    amountPaid: string;
 }

@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Login from './pages/auth/Login';
 import Signup from './pages/auth/Signup';
-import ForgotPassword from './pages/auth/ForgotPassword'; // <--- NEW IMPORT
+import ForgotPassword from './pages/auth/ForgotPassword'; 
 import Navbar from './components/Navbar';
 
 // Attendee Pages
@@ -20,6 +20,8 @@ import ScannerPage from './pages/organizer/Scanner';
 import AdminLayout from './components/AdminLayout';
 import ManageUsers from './pages/admin/ManageUsers';
 import Reports from './pages/admin/Reports';
+// 👇 NEW: Import the Admin version of CreateEvent and rename it to avoid conflicts
+import AdminCreateEvent from './pages/admin/CreateEvent'; 
 
 function App() {
   return (
@@ -28,7 +30,7 @@ function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} /> {/* <--- NEW ROUTE */}
+        <Route path="/forgot-password" element={<ForgotPassword />} /> 
 
         {/* === ATTENDEE ROUTES === */}
         <Route path="/" element={<Home />} />
@@ -45,10 +47,11 @@ function App() {
 
         {/* === ADMIN ROUTES (NEW) === */}
         <Route path="/admin" element={<AdminLayout />}>
-          {/* Admin Home reuses the Organizer Dashboard component for viewing events */}
           <Route index element={<OrganizerDashboard />} />
           <Route path="users" element={<ManageUsers />} />
           <Route path="reports" element={<Reports />} />
+          {/* 👇 NEW: Add the route for /admin/create */}
+          <Route path="create" element={<AdminCreateEvent />} /> 
         </Route>
 
       </Routes>

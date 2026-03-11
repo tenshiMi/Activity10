@@ -30,6 +30,12 @@ export class AuthService {
     
     // If user exists AND password matches
     if (user && await bcrypt.compare(pass, user.password)) {
+      
+      // 🌟 NEW: Block login if they are archived/inactive!
+      if (!user.isActive) {
+        throw new UnauthorizedException('INACTIVE_ACCOUNT');
+      }
+
       const { password, ...result } = user;
       return result; // Return user without password
     }
@@ -117,5 +123,48 @@ export class AuthService {
     });
 
     return { message: 'Password reset successfully' };
+  }
+
+  // ==========================================
+  // NEW METHODS FOR ACCOUNT REACTIVATION
+  // ==========================================
+
+  async sendReactivationOtp(email: string) {
+    const user = await this.usersService.findOneByEmail(email);
+    if (!user) throw new NotFoundException('User not found');
+
+    // Generate OTP & Expiration
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 15);
+
+    // Save OTP to user record
+    await this.usersService.update(user.id, { resetOtp: otp, resetOtpExpires: expiresAt });
+
+    // Send the email
+    const mailOptions = {
+      from: 'rojanegacu21@gmail.com',
+      to: email,
+      subject: 'Reactivate your Account',
+      text: `Your account was archived. Your OTP to reactivate and verify your email is: ${otp}. It will expire in 15 minutes.`,
+    };
+
+    await this.transporter.sendMail(mailOptions);
+    return { message: 'Reactivation OTP sent successfully' };
+  }
+
+  async verifyReactivationOtp(email: string, otp: string) {
+    // Reuse the exact same validation logic from forgot password
+    const { user } = await this.verifyOtp(email, otp);
+
+    // If OTP is correct, REACTIVATE the user!
+    await this.usersService.update(user.id, {
+      isActive: true,
+      resetOtp: null,
+      resetOtpExpires: null,
+    });
+
+    // Auto-login the user by generating a brand new JWT token
+    return this.login(user);
   }
 }

@@ -12,4 +12,6 @@ export class CreateAttendeeDto {
 
   @ApiProperty({ description: 'Event ID', example: '1' })
   eventId: string;
+
+  amountPaid?: string;
 }

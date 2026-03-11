@@ -28,11 +28,16 @@ export class EventsService {
         return this.eventsRepository.findOneBy({ id });
     }
 
-    // 👇 THIS WAS MISSING
+    // 🌟 CHANGED: This now "Soft Deletes" by toggling the archive status!
     async remove(id: number) {
-        return await this.eventsRepository.delete(id);
+        const event = await this.eventsRepository.findOneBy({ id });
+        if (event) {
+            // If it is archived, this un-archives it. If it is active, this archives it!
+            return await this.eventsRepository.update(id, { isArchived: !event.isArchived });
+        }
+        return null;
     }
-    // src/events/events.service.ts
+
     async update(id: number, updateEventDto: UpdateEventDto) {
         return await this.eventsRepository.update(id, updateEventDto);
     }

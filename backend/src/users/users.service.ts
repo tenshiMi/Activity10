@@ -131,8 +131,14 @@ export class UsersService {
     return this.usersRepository.find();
   }
 
+  // 🌟 CHANGED: Soft-Delete by toggling isActive status
   async remove(id: number) {
-    return await this.usersRepository.delete(id);
+    const user = await this.usersRepository.findOne({ where: { id } });
+    if (user) {
+      // If active, it deactivates them. If inactive, it reactivates them!
+      return await this.usersRepository.update(id, { isActive: !user.isActive });
+    }
+    return null;
   }
 
   // Update User (For Forgot Password Reset)

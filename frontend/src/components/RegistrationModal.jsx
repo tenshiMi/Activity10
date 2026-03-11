@@ -1,32 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios'; // <--- Import Axios
-import { X, User, Mail, Briefcase } from 'lucide-react';
+import axios from 'axios';
+import { X, User, Mail, Ticket, Lock, ShieldCheck, CreditCard, Loader2 } from 'lucide-react';
 
-
-export default function RegistrationModal({ isOpen, onClose, eventTitle, eventId, userInfo = null }) {
+export default function RegistrationModal({ isOpen, onClose, eventTitle, eventId, eventPrice, userInfo = null }) {
   const [formData, setFormData] = useState({
     name: '',
-    email: '',
-    company: ''
+    email: ''
   });
-  const [isLoading, setIsLoading] = useState(false);
+  
+  // 🌟 UPGRADED STATE: Track the exact step of the checkout
+  const [paymentStep, setPaymentStep] = useState('idle'); // 'idle', 'processing', 'verifying', 'done'
   const [modal, setModal] = useState({ show: false, type: 'success', title: '', message: '' });
 
-  // Pre-fill form with user information if available
   useEffect(() => {
     if (userInfo) {
-      setFormData({
-        name: userInfo.name || '',
-        email: userInfo.email || '',
-        company: ''
-      });
+      setFormData({ name: userInfo.name || '', email: userInfo.email || '' });
     } else {
-      setFormData({
-        name: '',
-        email: '',
-        company: ''
-      });
+      setFormData({ name: '', email: '' });
     }
+    // Reset payment step when modal opens
+    if (isOpen) setPaymentStep('idle');
   }, [userInfo, isOpen]);
 
   const handleChange = (e) => {
@@ -37,131 +30,165 @@ export default function RegistrationModal({ isOpen, onClose, eventTitle, eventId
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsLoading(true);
+    
+    // 🌟 STEP 1: Start Payment Simulation
+    setPaymentStep('processing');
 
     try {
       // First check if already registered
       const checkResponse = await axios.get(`http://localhost:3000/attendees/check-registration?email=${formData.email}&eventId=${eventId}`);
       
       if (checkResponse.data.isRegistered) {
-        setModal({
-          show: true,
-          type: 'error',
-          title: 'Already Registered',
-          message: 'You have already registered for this event.'
-        });
-        setIsLoading(false);
+        setPaymentStep('idle');
+        setModal({ show: true, type: 'error', title: 'Already Registered', message: 'You have already registered for this event.' });
         return;
       }
 
+      // 🌟 STEP 2: Fake a 1.5 second delay for "Connecting to Bank/e-Wallet"
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      setPaymentStep('verifying'); // Update UI text
       
+      // 🌟 STEP 3: Fake another 1 second delay for "Verifying Payment"
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // 🌟 STEP 4: Actually register them in the database!
       await axios.post('http://localhost:3000/attendees', {
         ...formData,
-        eventId: eventId.toString() 
+        eventId: eventId.toString(),
+        amountPaid: eventPrice || '0' 
       });
       
-      setModal({
-        show: true,
-        type: 'success',
-        title: 'Success',
-        message: `Successfully registered for ${eventTitle}!`
-      });
-      onClose();
+      setPaymentStep('done');
+      setModal({ show: true, type: 'success', title: 'Payment Successful!', message: `Your digital ticket for ${eventTitle} has been sent to your email.` });
+      
     } catch (error) {
       console.error("Registration failed:", error);
-      setModal({
-        show: true,
-        type: 'error',
-        title: 'Registration Failed',
-        message: 'Registration failed. Please try again.'
-      });
-    } finally {
-      setIsLoading(false);
+      setPaymentStep('idle');
+      setModal({ show: true, type: 'error', title: 'Transaction Failed', message: 'There was an error processing your request. Please try again.' });
     }
   };
+
+  const isFree = eventPrice === '0' || eventPrice === 'Free' || !eventPrice;
+  const displayPrice = isFree ? 'Free' : `₱${eventPrice}`;
 
   return (
     <>
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all relative">
         
-        { }
-        <div className="bg-gray-50 px-6 py-4 border-b flex justify-between items-center">
-          <h3 className="text-lg font-bold text-gray-800">Register Event</h3>
-          <button onClick={onClose}><X size={24} className="text-gray-400 hover:text-gray-600" /></button>
+        {/* 🌟 PAYMENT OVERLAY: Shows up when button is clicked! */}
+        {paymentStep !== 'idle' && (
+          <div className="absolute inset-0 bg-white/95 backdrop-blur-md z-10 flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-300">
+             {paymentStep === 'done' ? (
+                <ShieldCheck size={64} className="text-green-500 mb-4 animate-in zoom-in" />
+             ) : (
+                <Loader2 size={64} className="text-blue-600 mb-4 animate-spin" />
+             )}
+             
+             <h2 className="text-2xl font-bold text-gray-900 mb-2">
+               {paymentStep === 'processing' && 'Connecting to Gateway...'}
+               {paymentStep === 'verifying' && 'Securing Payment...'}
+               {paymentStep === 'done' && 'Payment Complete!'}
+             </h2>
+             <p className="text-gray-500 font-medium">
+               {paymentStep !== 'done' ? 'Please do not close this window.' : 'Generating your ticket...'}
+             </p>
+          </div>
+        )}
+
+        {/* Header */}
+        <div className="bg-gray-50 px-6 py-5 border-b flex justify-between items-center">
+          <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+            <ShieldCheck className="text-blue-600" size={20} /> Secure Checkout
+          </h3>
+          <button onClick={onClose} disabled={paymentStep !== 'idle'} className="bg-gray-200 hover:bg-gray-300 p-1.5 rounded-full transition disabled:opacity-50">
+            <X size={18} className="text-gray-600" />
+          </button>
         </div>
 
-        { }
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div className="text-sm text-gray-500 mb-4">
-            Registering for: <span className="font-semibold text-blue-600">{eventTitle}</span>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-gray-700">
-              Full Name {userInfo ? <span className="text-green-600 text-xs">(Auto-filled)</span> : ''}
-            </label>
-            <div className="relative">
-              <User className="absolute left-3 top-3 text-gray-400" size={18} />
-              <input required name="name" type="text" placeholder="John Doe"
-                className={`w-full pl-10 pr-4 py-2 border rounded-lg ${userInfo ? 'bg-gray-50 text-gray-600' : ''}`}
-                onChange={handleChange}
-                value={formData.name}
-                readOnly={!!userInfo} />
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          
+          {/* Order Summary Box */}
+          <div className="bg-blue-50/50 border border-blue-100 rounded-2xl p-5">
+            <h4 className="text-xs font-bold text-blue-800 uppercase tracking-wider mb-4">Order Summary</h4>
+            <div className="flex justify-between items-start gap-4 mb-3">
+              <div className="flex items-start gap-3">
+                <div className="bg-blue-100 p-2 rounded-lg text-blue-600 mt-0.5">
+                  <Ticket size={18} />
+                </div>
+                <div>
+                  <p className="font-bold text-gray-900 leading-tight">{eventTitle}</p>
+                  <p className="text-sm text-gray-500 mt-1">General Admission</p>
+                </div>
+              </div>
+              <span className="font-bold text-gray-700 bg-white border border-gray-200 px-2 py-1 rounded text-sm">1x</span>
+            </div>
+            
+            <div className="border-t border-blue-100 mt-4 pt-4 flex justify-between items-end">
+              <span className="text-sm font-semibold text-gray-600">Total Due</span>
+              <span className="text-2xl font-extrabold text-green-600 leading-none">{displayPrice}</span>
             </div>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-gray-700">
-              Email {userInfo ? <span className="text-green-600 text-xs">(Auto-filled)</span> : ''}
-            </label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-3 text-gray-400" size={18} />
-              <input required name="email" type="email" placeholder="john@example.com"
-                className={`w-full pl-10 pr-4 py-2 border rounded-lg ${userInfo ? 'bg-gray-50 text-gray-600' : ''}`}
-                onChange={handleChange}
-                value={formData.email}
-                readOnly={!!userInfo} />
+          <div className="space-y-4">
+            <h4 className="text-sm font-bold text-gray-900 border-b pb-2">Attendee Information</h4>
+            
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-gray-600 uppercase">Full Name</label>
+              <div className="relative">
+                <User className="absolute left-3 top-3.5 text-gray-400" size={18} />
+                <input required name="name" type="text"
+                  className={`w-full pl-10 pr-10 py-3 border rounded-xl font-medium ${userInfo ? 'bg-gray-100 text-gray-600 border-gray-200 cursor-not-allowed' : 'border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none'}`}
+                  onChange={handleChange} value={formData.name} readOnly={!!userInfo} 
+                />
+                {userInfo && <Lock className="absolute right-4 top-3.5 text-gray-400" size={16} />}
+              </div>
             </div>
-          </div>
 
-          <div className="space-y-1">
-             <label className="text-sm font-medium text-gray-700">Company</label>
-             <div className="relative">
-               <Briefcase className="absolute left-3 top-3 text-gray-400" size={18} />
-               <input name="company" type="text" placeholder="Tech Corp"
-                 className="w-full pl-10 pr-4 py-2 border rounded-lg"
-                 onChange={handleChange} />
-             </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-gray-600 uppercase">Email Address</label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-3.5 text-gray-400" size={18} />
+                <input required name="email" type="email"
+                  className={`w-full pl-10 pr-10 py-3 border rounded-xl font-medium ${userInfo ? 'bg-gray-100 text-gray-600 border-gray-200 cursor-not-allowed' : 'border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none'}`}
+                  onChange={handleChange} value={formData.email} readOnly={!!userInfo} 
+                />
+                {userInfo && <Lock className="absolute right-4 top-3.5 text-gray-400" size={16} />}
+              </div>
+            </div>
           </div>
 
           <button 
             type="submit" 
-            disabled={isLoading}
-            className="w-full py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 disabled:bg-blue-400 mt-4"
+            disabled={paymentStep !== 'idle'}
+            className="w-full py-4 bg-blue-600 text-white font-bold text-lg rounded-xl hover:bg-blue-700 active:scale-[0.98] disabled:bg-blue-400 transition-all shadow-md mt-2 flex justify-center items-center gap-2"
           >
-            {isLoading ? 'Registering...' : 'Confirm Registration'}
+            {isFree ? <Ticket size={20} /> : <CreditCard size={20} />}
+            {isFree ? 'Get Free Ticket' : `Pay ${displayPrice}`}
           </button>
         </form>
       </div>
     </div>
 
-    { }
     {modal.show && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-        <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-sm">
-          <h2 className={`text-xl font-bold mb-4 ${modal.type === 'error' ? 'text-red-600' : 'text-green-600'}`}>
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div className="bg-white p-6 rounded-2xl shadow-xl w-full max-w-sm border border-gray-100 text-center">
+          <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4 ${modal.type === 'error' ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
+             <ShieldCheck size={32} />
+          </div>
+          <h2 className={`text-xl font-extrabold mb-2 ${modal.type === 'error' ? 'text-red-600' : 'text-green-600'}`}>
             {modal.title}
           </h2>
-          <p className="text-gray-600 mb-6">{modal.message}</p>
-          <div className="flex justify-end">
-            <button 
-              onClick={() => setModal({ show: false, type: '', title: '', message: '' })}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              OK
-            </button>
-          </div>
+          <p className="text-gray-600 mb-6 font-medium">{modal.message}</p>
+          <button 
+            onClick={() => {
+              setModal({ show: false, type: '', title: '', message: '' });
+              if (modal.type === 'success') onClose();
+            }}
+            className="w-full py-3 bg-gray-900 text-white rounded-xl hover:bg-gray-800 font-bold transition shadow-sm"
+          >
+            Continue
+          </button>
         </div>
       </div>
     )}

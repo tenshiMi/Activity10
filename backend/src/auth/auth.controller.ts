@@ -85,4 +85,22 @@ export class AuthController {
     // (Make sure your React app is running on port 5173!)
     return res.redirect(`http://localhost:5173/login?token=${tokenData.access_token}&user=${encodeURIComponent(JSON.stringify(tokenData.user))}`);
   }
+
+  // ==========================================
+  // NEW ENDPOINTS FOR REACTIVATION
+  // ==========================================
+
+  @Post('reactivate/send')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Send OTP to reactivate an archived account' })
+  async sendReactivation(@Body() body: { email: string }) {
+    return this.authService.sendReactivationOtp(body.email);
+  }
+
+  @Post('reactivate/verify')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify OTP and log the user in' })
+  async verifyReactivation(@Body() body: { email: string, otp: string }) {
+    return this.authService.verifyReactivationOtp(body.email, body.otp);
+  }
 }
