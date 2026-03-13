@@ -25,4 +25,10 @@ export class User {
 
   @Column({ type: 'datetime', nullable: true })
   resetOtpExpires: Date | null;
+
+  @Column({ default: false })
+  isArchived: boolean;
+
+  @Column({ type: 'timestamp', nullable: true })
+  archivedAt: Date; // 🌟 We need to know WHEN they were archived!
 }

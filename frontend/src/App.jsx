@@ -5,7 +5,7 @@ import ForgotPassword from './pages/auth/ForgotPassword';
 import Navbar from './components/Navbar';
 
 // Attendee Pages
-import Home from './pages/attendee/Home';
+import Home from './pages/attendee/home';
 import EventDetails from './pages/attendee/EventDetails';
 import MyTickets from './pages/attendee/MyTickets';
 

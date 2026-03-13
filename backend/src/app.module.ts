@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ScheduleModule } from '@nestjs/schedule'; // 🌟 Added ScheduleModule
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { EventsModule } from './events/events.module';
 import { AttendeesModule } from './attendees/attendees.module';
@@ -7,12 +8,13 @@ import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(), // 🌟 Initialized ScheduleModule here!
     TypeOrmModule.forRoot({
       type: 'mysql',
       host: 'localhost',
       port: 3306,
-      username: 'root', // Default XAMPP username
-      password: '',     // Default XAMPP password is empty
+      username: 'root', 
+      password: '',     
       database: 'event_db',
       entities: [__dirname + '/**/*.entity{.ts,.js}'],
       synchronize: true, 

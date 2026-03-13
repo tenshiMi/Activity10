@@ -35,15 +35,16 @@ export default function EventDetails() {
     fetchEventDetails();
   }, [id, isLoggedIn, user?.email]);
 
+  // Premium Minimalist Gradients
   const getCategoryStyle = (category) => {
     const lowerCat = category?.toLowerCase() || '';
-    if (lowerCat.includes('nightlife') || lowerCat.includes('party')) return 'from-purple-600 to-pink-500';
-    if (lowerCat.includes('tech') || lowerCat.includes('conference')) return 'from-blue-600 to-cyan-500';
-    if (lowerCat.includes('concert') || lowerCat.includes('music')) return 'from-orange-500 to-red-500';
-    if (lowerCat.includes('festival') || lowerCat.includes('expo')) return 'from-green-500 to-teal-500';
-    if (lowerCat.includes('theater') || lowerCat.includes('comedy')) return 'from-indigo-600 to-purple-600';
-    if (lowerCat.includes('sport')) return 'from-yellow-500 to-orange-500';
-    return 'from-blue-600 to-blue-800'; 
+    if (lowerCat.includes('nightlife') || lowerCat.includes('party')) return 'from-slate-900 to-indigo-950';
+    if (lowerCat.includes('tech') || lowerCat.includes('conference')) return 'from-gray-900 to-slate-800';
+    if (lowerCat.includes('concert') || lowerCat.includes('music')) return 'from-zinc-900 to-stone-800';
+    if (lowerCat.includes('festival') || lowerCat.includes('expo')) return 'from-emerald-950 to-teal-900';
+    if (lowerCat.includes('theater') || lowerCat.includes('comedy')) return 'from-slate-800 to-gray-900';
+    if (lowerCat.includes('sport')) return 'from-orange-950 to-amber-950';
+    return 'from-gray-800 to-gray-900'; 
   };
 
   const formatDate = (dateStr) => {
@@ -73,38 +74,42 @@ export default function EventDetails() {
     <div className="min-h-screen bg-gray-50 pb-32">
       <div className="max-w-4xl mx-auto pt-6 px-4 sm:px-6">
         
-        {/* Header Banner */}
+        {/* 🌟 FIX: Header Banner with updated z-index and pointer-events */}
         <div className={`relative h-64 md:h-80 rounded-t-3xl bg-gradient-to-br ${getCategoryStyle(event.category)} flex items-center justify-center overflow-hidden shadow-md`}>
           <button 
             onClick={() => navigate(-1)} 
-            className="absolute top-6 left-6 bg-white/20 hover:bg-white/30 backdrop-blur-md text-white p-2.5 rounded-full transition"
+            className="absolute top-6 left-6 z-50 bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-md text-white p-2.5 rounded-full transition cursor-pointer"
           >
             <ArrowLeft size={24} />
           </button>
-          <span className="text-white text-4xl md:text-6xl font-extrabold tracking-widest opacity-40 drop-shadow-lg uppercase text-center px-4">
+          
+          {/* Subtle noise/texture overlay - Set to pointer-events-none */}
+          <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white to-transparent mix-blend-overlay pointer-events-none"></div>
+          
+          <span className="text-white text-4xl md:text-6xl font-extrabold tracking-widest opacity-40 drop-shadow-lg uppercase text-center px-4 relative z-10 pointer-events-none">
             {event.category?.split('/')[0] || event.category}
           </span>
         </div>
 
-        {/* 🌟 FIX: Softened the border and added a premium drop-shadow */}
+        {/* Content Card */}
         <div className="bg-white rounded-b-3xl shadow-lg border-x border-b border-gray-100 p-6 md:p-10 -mt-2 relative z-10">
           
           <div className="flex justify-between items-start gap-4 mb-4">
-            <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 leading-tight">
+            <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 leading-tight tracking-tight">
               {event.title}
             </h1>
-            <button onClick={handleShare} className="text-gray-400 hover:text-blue-600 transition p-2 bg-gray-50 rounded-full">
+            <button onClick={handleShare} className="text-gray-400 hover:text-gray-900 transition p-2 bg-gray-50 hover:bg-gray-100 rounded-full border border-transparent hover:border-gray-200 cursor-pointer">
               <Share2 size={24} />
             </button>
           </div>
 
-          <div className="inline-block bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-bold tracking-wide mb-8">
-            Open for Registration
+          <div className="inline-block bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm font-bold tracking-wide mb-8 border border-gray-200">
+            Registration Open
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
             <div className="flex items-start gap-4">
-              <div className="bg-blue-50 p-3 rounded-xl text-blue-600"><Calendar size={24} /></div>
+              <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 text-gray-600"><Calendar size={24} /></div>
               <div>
                 <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Date</p>
                 <p className="text-lg font-medium text-gray-900">{formatDate(event.date)}</p>
@@ -112,7 +117,7 @@ export default function EventDetails() {
             </div>
             
             <div className="flex items-start gap-4">
-              <div className="bg-blue-50 p-3 rounded-xl text-blue-600"><Clock size={24} /></div>
+              <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 text-gray-600"><Clock size={24} /></div>
               <div>
                 <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Time</p>
                 <p className="text-lg font-medium text-gray-900">{formatTime(event.time)}</p>
@@ -120,7 +125,7 @@ export default function EventDetails() {
             </div>
 
             <div className="flex items-start gap-4 md:col-span-2">
-              <div className="bg-blue-50 p-3 rounded-xl text-blue-600"><MapPin size={24} /></div>
+              <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 text-gray-600"><MapPin size={24} /></div>
               <div>
                 <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Location</p>
                 <p className="text-lg font-medium text-gray-900">{event.location}</p>
@@ -149,12 +154,12 @@ export default function EventDetails() {
         </div>
       </div>
 
-      {/* 🌟 FIX: Sticky Bottom Bar now has a clean upward shadow and an explicit light-gray border */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-[0_-8px_15px_-3px_rgba(0,0,0,0.05)] p-4 md:p-6 z-40">
+      {/* Sticky Bottom Bar */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-gray-200 shadow-[0_-8px_15px_-3px_rgba(0,0,0,0.05)] p-4 md:p-6 z-40">
         <div className="max-w-4xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="text-center md:text-left">
             <p className="text-sm text-gray-500 font-medium">Price per ticket</p>
-            <p className="text-2xl md:text-3xl font-extrabold text-green-600">
+            <p className="text-2xl md:text-3xl font-extrabold text-gray-900 tracking-tight">
               {event.price === '0' || event.price === 'Free' ? 'Free' : `₱${event.price}`}
             </p>
           </div>
@@ -170,9 +175,9 @@ export default function EventDetails() {
             ) : isRegistered ? (
                <Link 
                  to="/my-tickets"
-                 className="w-full md:w-auto bg-green-100 text-green-700 border border-green-200 px-10 py-4 rounded-xl font-bold text-lg hover:bg-green-200 transition shadow-sm flex items-center justify-center gap-2"
+                 className="w-full md:w-auto bg-green-50 text-green-700 border border-green-200 px-10 py-4 rounded-xl font-bold text-lg hover:bg-green-100 transition shadow-sm flex items-center justify-center gap-2"
                >
-                 <CheckCircle size={22} /> You're Going!
+                 <CheckCircle size={22} /> You're Going
                </Link>
             ) : (
                <button 
@@ -199,4 +204,4 @@ export default function EventDetails() {
       />
     </div>
   );
-}
+} 

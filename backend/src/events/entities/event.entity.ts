@@ -34,4 +34,7 @@ export class Event {
 
     @Column({ default: false })
     isArchived: boolean;
+
+    @Column({ nullable: true })
+    imageUrl: string;
 }

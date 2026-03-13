@@ -1,17 +1,16 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Calendar, MapPin, PhilippinePeso, Type, AlignLeft, Tag, BellRing } from 'lucide-react';
+// 🌟 Added 'Image' icon to your imports!
+import { Calendar, MapPin, PhilippinePeso, Type, AlignLeft, Tag, BellRing, Image as ImageIcon } from 'lucide-react';
 
 export default function CreateEvent() {
     const navigate = useNavigate();
     const location = useLocation();
 
-    // Safely grab the event from the router state (if editing)
     const eventToEdit = location.state?.eventToEdit || null;
     const user = JSON.parse(localStorage.getItem('user') || '{}');
 
-    // Helper to safely format MySQL dates for the HTML date picker
     const formatDateForInput = (dateString) => {
         if (!dateString) return '';
         try {
@@ -21,16 +20,16 @@ export default function CreateEvent() {
         }
     };
 
-    // Initialize state DIRECTLY from the event
     const [formData, setFormData] = useState({
         title: eventToEdit?.title || '',
+        imageUrl: eventToEdit?.imageUrl || '', // 🌟 NEW: Track the image URL
         date: formatDateForInput(eventToEdit?.date),
         time: eventToEdit?.time || '',
         location: eventToEdit?.location || '',
         description: eventToEdit?.description || '',
         price: eventToEdit?.price || '',
         category: eventToEdit?.category || '',
-        announcement: eventToEdit?.announcement || '', // Keeping your announcement feature!
+        announcement: eventToEdit?.announcement || '', 
         organizerId: eventToEdit?.organizerId || user.id || 0
     });
 
@@ -47,7 +46,6 @@ export default function CreateEvent() {
 
         try {
             if (eventToEdit?.id) {
-                // UPDATE EVENT
                 await axios.put(`http://localhost:3000/events/${eventToEdit.id}`, formData);
                 setModal({
                     show: true,
@@ -56,7 +54,6 @@ export default function CreateEvent() {
                     message: 'Event updated successfully!'
                 });
             } else {
-                // CREATE EVENT
                 await axios.post('http://localhost:3000/events', formData);
                 setModal({
                     show: true,
@@ -106,6 +103,25 @@ export default function CreateEvent() {
                             value={formData.title}
                             onChange={handleChange}
                         />
+                    </div>
+
+                    {/* 🌟 NEW: Event Image URL */}
+                    <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2 flex justify-between">
+                            <span><ImageIcon className="inline w-4 h-4 mr-1" /> Cover Image URL</span>
+                            <span className="text-gray-400 font-normal text-xs">Optional</span>
+                        </label>
+                        <input
+                            type="url"
+                            name="imageUrl"
+                            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                            placeholder="https://example.com/my-event-banner.jpg"
+                            value={formData.imageUrl}
+                            onChange={handleChange}
+                        />
+                        <p className="text-xs text-gray-500 mt-1.5">
+                            Paste a direct link to an image. If left blank, a beautiful category gradient will be used.
+                        </p>
                     </div>
 
                     {/* Date & Time */}
@@ -218,7 +234,7 @@ export default function CreateEvent() {
                         />
                     </div>
 
-                    {/* Event Announcement (Yellow Box) */}
+                    {/* Event Announcement */}
                     <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6">
                         <label className="block text-sm font-bold text-yellow-800 mb-1 flex items-center gap-2">
                             <BellRing size={16} /> Event Announcement
@@ -261,7 +277,7 @@ export default function CreateEvent() {
                             <button 
                                 onClick={() => {
                                     setModal({ show: false, type: '', title: '', message: '' });
-                                    navigate('/organizer'); // Send Organizer back to their dashboard
+                                    navigate('/organizer');
                                 }}
                                 className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold"
                             >

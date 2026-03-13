@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Delete, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, HttpCode, HttpStatus, Patch, Put } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -31,6 +31,21 @@ export class UsersController {
   @ApiResponse({ status: 200, description: 'List of users' })
   findAll() {
     return this.usersService.findAll();
+  }
+
+  // 🌟 FIX: Added the missing UPDATE endpoints (Supports both PUT and PATCH)
+  @Patch(':id')
+  @ApiOperation({ summary: 'Update a user by ID (Partial Update)' })
+  @ApiResponse({ status: 200, description: 'User updated successfully' })
+  updatePartial(@Param('id') id: string, @Body() updateData: any) {
+    return this.usersService.update(+id, updateData);
+  }
+
+  @Put(':id')
+  @ApiOperation({ summary: 'Update a user by ID (Full Update)' })
+  @ApiResponse({ status: 200, description: 'User updated successfully' })
+  updateFull(@Param('id') id: string, @Body() updateData: any) {
+    return this.usersService.update(+id, updateData);
   }
 
   @Delete(':id')

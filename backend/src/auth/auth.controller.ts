@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UnauthorizedException, HttpCode, HttpStatus, Get, UseGuards, Req, Res } from '@nestjs/common';
+import { Controller, Post, Body, UnauthorizedException, HttpCode, HttpStatus, Get, UseGuards, Req, Res, Patch, Param } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
@@ -102,5 +102,16 @@ export class AuthController {
   @ApiOperation({ summary: 'Verify OTP and log the user in' })
   async verifyReactivation(@Body() body: { email: string, otp: string }) {
     return this.authService.verifyReactivationOtp(body.email, body.otp);
+  }
+
+  // ==========================================
+  // NEW ENDPOINTS FOR ADMIN USER MANAGEMENT
+  // ==========================================
+
+  @Patch('users/:id/archive')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Archive a user and start 60-day deletion countdown' })
+  async archiveUser(@Param('id') id: string) {
+    return this.authService.archiveUser(+id);
   }
 }
