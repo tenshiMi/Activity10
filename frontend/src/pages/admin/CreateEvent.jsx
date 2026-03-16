@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Calendar, MapPin, PhilippinePeso, Type, AlignLeft, Tag } from 'lucide-react';
+import { Calendar, MapPin, PhilippinePeso, Type, AlignLeft, Tag, Image } from 'lucide-react';
 
 export default function CreateEvent() {
     const navigate = useNavigate();
@@ -30,7 +30,9 @@ export default function CreateEvent() {
         description: eventToEdit?.description || '',
         price: eventToEdit?.price || '',
         category: eventToEdit?.category || 'Conference',
-        organizerId: eventToEdit?.organizerId || user.id || 0
+        organizerId: eventToEdit?.organizerId || user.id || 0,
+        // 🌟 FIX: Change state property from bannerUrl to imageUrl
+        imageUrl: eventToEdit?.imageUrl || '',
     });
 
     const [isLoading, setIsLoading] = useState(false);
@@ -90,6 +92,7 @@ export default function CreateEvent() {
                 </div>
 
                 <form onSubmit={handleSubmit} className="bg-white p-8 rounded-xl shadow-sm border space-y-6">
+                    {/* Event Title */}
                     <div>
                         <label className="block text-sm font-bold text-gray-700 mb-2">
                             <Type className="inline w-4 h-4 mr-1" />
@@ -100,12 +103,35 @@ export default function CreateEvent() {
                             name="title"
                             required
                             className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                            placeholder="Enter event title"
+                            placeholder="e.g. Tech Summit 2024"
                             value={formData.title}
                             onChange={handleChange}
                         />
                     </div>
 
+                    {/* 🌟 NEW: Cover Image URL perfectly styled */}
+                    <div>
+                        <div className="flex justify-between items-center mb-2">
+                            <label className="block text-sm font-bold text-gray-700">
+                                <Image className="inline w-4 h-4 mr-1" />
+                                Cover Image URL
+                            </label>
+                            <span className="text-sm text-gray-400">Optional</span>
+                        </div>
+                        <input
+                            type="url"
+                            name="imageUrl" // 🌟 FIX: Change input name to imageUrl
+                            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                            placeholder="https://example.com/my-event-banner.jpg"
+                            value={formData.imageUrl} // 🌟 FIX: Bind to formData.imageUrl
+                            onChange={handleChange}
+                        />
+                        <p className="text-sm text-gray-500 mt-2">
+                            Paste a direct link to an image. If left blank, a beautiful category gradient will be used.
+                        </p>
+                    </div>
+
+                    {/* Date and Time */}
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-bold text-gray-700 mb-2">
@@ -137,6 +163,7 @@ export default function CreateEvent() {
                         </div>
                     </div>
 
+                    {/* Location */}
                     <div>
                         <label className="block text-sm font-bold text-gray-700 mb-2">
                             <MapPin className="inline w-4 h-4 mr-1" />
@@ -153,6 +180,7 @@ export default function CreateEvent() {
                         />
                     </div>
 
+                    {/* Description */}
                     <div>
                         <label className="block text-sm font-bold text-gray-700 mb-2">
                             <AlignLeft className="inline w-4 h-4 mr-1" />
@@ -168,6 +196,7 @@ export default function CreateEvent() {
                         />
                     </div>
 
+                    {/* Price and Category */}
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-bold text-gray-700 mb-2">
@@ -228,6 +257,7 @@ export default function CreateEvent() {
                 </form>
             </div>
 
+            {/* Modals */}
             {modal.show && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
                     <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-sm">

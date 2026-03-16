@@ -35,7 +35,6 @@ export default function EventDetails() {
     fetchEventDetails();
   }, [id, isLoggedIn, user?.email]);
 
-  // Premium Minimalist Gradients
   const getCategoryStyle = (category) => {
     const lowerCat = category?.toLowerCase() || '';
     if (lowerCat.includes('nightlife') || lowerCat.includes('party')) return 'from-slate-900 to-indigo-950';
@@ -70,25 +69,36 @@ export default function EventDetails() {
   if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-500">Loading event details...</div>;
   if (!event) return <div className="min-h-screen flex items-center justify-center text-gray-500">Event not found.</div>;
 
+  // 🌟 FIX: Check for BOTH bannerUrl and imageUrl so old events still show their pictures!
+  const displayImage = event.bannerUrl || event.imageUrl;
+
   return (
     <div className="min-h-screen bg-gray-50 pb-32">
       <div className="max-w-4xl mx-auto pt-6 px-4 sm:px-6">
         
-        {/* 🌟 FIX: Header Banner with updated z-index and pointer-events */}
-        <div className={`relative h-64 md:h-80 rounded-t-3xl bg-gradient-to-br ${getCategoryStyle(event.category)} flex items-center justify-center overflow-hidden shadow-md`}>
+        {/* Header Banner */}
+        <div className={`relative h-64 md:h-80 rounded-t-3xl flex items-center justify-center overflow-hidden shadow-md ${!displayImage ? `bg-gradient-to-br ${getCategoryStyle(event.category)}` : 'bg-gray-100'}`}>
+          
           <button 
             onClick={() => navigate(-1)} 
-            className="absolute top-6 left-6 z-50 bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-md text-white p-2.5 rounded-full transition cursor-pointer"
+            className="absolute top-6 left-6 z-50 bg-black/30 hover:bg-black/50 border border-white/20 backdrop-blur-md text-white p-2.5 rounded-full transition cursor-pointer"
           >
             <ArrowLeft size={24} />
           </button>
           
-          {/* Subtle noise/texture overlay - Set to pointer-events-none */}
-          <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white to-transparent mix-blend-overlay pointer-events-none"></div>
-          
-          <span className="text-white text-4xl md:text-6xl font-extrabold tracking-widest opacity-40 drop-shadow-lg uppercase text-center px-4 relative z-10 pointer-events-none">
-            {event.category?.split('/')[0] || event.category}
-          </span>
+          {displayImage ? (
+            <>
+              <img src={displayImage} alt={event.title} className="absolute inset-0 w-full h-full object-cover pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-b from-black/50 to-transparent h-24 pointer-events-none"></div>
+            </>
+          ) : (
+            <>
+              <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white to-transparent mix-blend-overlay pointer-events-none"></div>
+              <span className="text-white text-4xl md:text-6xl font-extrabold tracking-widest opacity-40 drop-shadow-lg uppercase text-center px-4 relative z-10 pointer-events-none">
+                {event.category?.split('/')[0] || event.category}
+              </span>
+            </>
+          )}
         </div>
 
         {/* Content Card */}
@@ -168,7 +178,7 @@ export default function EventDetails() {
             {!isLoggedIn ? (
                <button 
                  onClick={() => navigate('/login')}
-                 className="w-full md:w-auto bg-gray-900 text-white px-10 py-4 rounded-xl font-bold text-lg hover:bg-gray-800 transition shadow-md"
+                 className="w-full md:w-auto bg-gray-900 text-white px-10 py-4 rounded-xl font-bold text-lg hover:bg-gray-800 transition shadow-md cursor-pointer"
                >
                  Login to Register
                </button>
@@ -182,7 +192,7 @@ export default function EventDetails() {
             ) : (
                <button 
                  onClick={() => setIsModalOpen(true)}
-                 className="w-full md:w-auto bg-blue-600 text-white px-10 py-4 rounded-xl font-bold text-lg hover:bg-blue-700 transition shadow-lg transform hover:-translate-y-0.5"
+                 className="w-full md:w-auto bg-blue-600 text-white px-10 py-4 rounded-xl font-bold text-lg hover:bg-blue-700 transition shadow-lg transform hover:-translate-y-0.5 cursor-pointer"
                >
                  Register Now
                </button>
@@ -204,4 +214,4 @@ export default function EventDetails() {
       />
     </div>
   );
-} 
+}

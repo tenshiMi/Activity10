@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Delete, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Delete, Param, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiParam, ApiBody } from '@nestjs/swagger';
 import { AttendeesService } from './attendees.service';
 import { CreateAttendeeDto } from './dto/create-attendee.dto';
@@ -44,6 +44,19 @@ export class AttendeesController {
     } catch (error) {
       return { success: false, message: 'Invalid Ticket' };
     }
+  }
+
+  // 🌟 NEW: The route that catches requests from your 3-dot menu
+  @Patch(':ticketId/status')
+  @ApiOperation({ summary: 'Update attendee status manually' })
+  @ApiParam({ name: 'ticketId', description: 'Ticket ID' })
+  @ApiBody({ schema: { type: 'object', properties: { status: { type: 'string', example: 'Cancelled' } } } })
+  @ApiResponse({ status: 200, description: 'Status updated successfully' })
+  updateStatus(
+    @Param('ticketId') ticketId: string, 
+    @Body('status') status: string
+  ) {
+    return this.attendeesService.updateStatus(ticketId, status);
   }
 
   @Delete(':id')

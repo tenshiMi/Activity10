@@ -33,14 +33,15 @@ export default function ManageUsers() {
   const handleAddUserSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('http://localhost:3000/users', newUser);
+      // 🌟 FIX: Pointed this to the new admin endpoint so it bypasses OTP!
+      await axios.post('http://localhost:3000/users/admin', newUser);
       
       setAddUserModal(false);
       setNewUser({ name: '', email: '', password: '', role: 'Organizer' }); // Reset form
       fetchUsers(); // Refresh the table
       setModal({ show: true, type: 'success', title: 'User Created', message: 'The new team member has been successfully added.' });
     } catch (error) {
-      // 🌟 EXTRACT EXACT BACKEND ERROR
+      // EXTRACT EXACT BACKEND ERROR
       const backendError = error.response?.data?.message || 'Cannot connect to server.';
       const errorMessage = Array.isArray(backendError) ? backendError[0] : backendError;
       setModal({ show: true, type: 'error', title: 'Backend Error', message: errorMessage });
@@ -75,7 +76,6 @@ export default function ManageUsers() {
         payload.password = editModal.user.password;
       }
 
-      // 🌟 FIX: Changed .patch to .put 
       await axios.put(`http://localhost:3000/users/${editModal.user.id}`, payload);
       
       fetchUsers(); // Refresh to get clean data from backend
@@ -208,7 +208,7 @@ export default function ManageUsers() {
                 <label className="block text-sm font-bold text-gray-700 mb-1">Email Address</label>
                 <input 
                   type="email" required
-                  placeholder="jane@example.com"
+                  placeholder="e.g. jane@example.com"
                   className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
                   value={newUser.email}
                   onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
@@ -218,7 +218,7 @@ export default function ManageUsers() {
                 <label className="block text-sm font-bold text-gray-700 mb-1">Temporary Password</label>
                 <input 
                   type="password" required
-                  placeholder="••••••••"
+                  placeholder=" "
                   className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
                   value={newUser.password}
                   onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
@@ -286,7 +286,7 @@ export default function ManageUsers() {
                 </label>
                 <input 
                   type="password"
-                  placeholder="- - - - - - - -"
+                  placeholder=" "
                   className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
                   value={editModal.user.password}
                   onChange={(e) => setEditModal({ ...editModal, user: { ...editModal.user, password: e.target.value }})}

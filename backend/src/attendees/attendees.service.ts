@@ -1,31 +1,28 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common'; // 🌟 Added NotFoundException
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Attendee } from './entities/attendee.entity';
 import { CreateAttendeeDto } from './dto/create-attendee.dto';
-import * as nodemailer from 'nodemailer'; // 🌟 1. IMPORT NODEMAILER
+import * as nodemailer from 'nodemailer';
 
 @Injectable()
 export class AttendeesService {
-  private transporter; // 🌟 2. DECLARE TRANSPORTER
+  private transporter; 
 
   constructor(
     @InjectRepository(Attendee)
     private attendeeRepository: Repository<Attendee>,
   ) { 
-    // 🌟 3. SETUP YOUR EMAIL TRANSPORTER
     this.transporter = nodemailer.createTransport({
       service: 'gmail', 
       auth: {
-        user: 'rojanegacu21@gmail.com', // Your Gmail address
-        pass: 'frbi wfve gljn wukw'       // REPLACE WITH YOUR GMAIL APP PASSWORD
+        user: 'rojanegacu21@gmail.com', 
+        pass: 'frbi wfve gljn wukw' 
       },
     });
   }
 
-  // 🌟 4. MAKE CREATE METHOD ASYNC
   async create(createAttendeeDto: CreateAttendeeDto) {
-    // Generate a simple random Ticket ID (e.g., "TIX-8473")
     const randomId = Math.floor(1000 + Math.random() * 9000);
     const ticketId = `TIX-${randomId}`;
 
@@ -35,12 +32,9 @@ export class AttendeesService {
       status: 'Pending'
     });
 
-    // Save to the database FIRST
     const savedAttendee = await this.attendeeRepository.save(newAttendee);
 
-    // 🌟 5. SEND THE E-TICKET EMAIL!
     try {
-      // Use a free API to generate the QR image directly inside the email!
       const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${ticketId}`;
 
       const mailOptions = {
@@ -77,7 +71,6 @@ export class AttendeesService {
       console.log(`Ticket email sent to ${savedAttendee.email}`);
     } catch (error) {
       console.error("Failed to send ticket email:", error);
-      // We log the error but DON'T throw it, so the user still gets registered in the database even if the email fails.
     }
 
     return savedAttendee;
@@ -91,23 +84,39 @@ export class AttendeesService {
     const existingAttendee = await this.attendeeRepository.findOne({
       where: { email, eventId }
     });
-    return { isRegistered: !!existingAttendee };
+    
+    // 🌟 FIX: It now checks if they exist AND that their status is NOT Cancelled!
+    const isActuallyGoing = existingAttendee ? existingAttendee.status !== 'Cancelled' : false;
+    
+    return { 
+      isRegistered: isActuallyGoing,
+      status: existingAttendee?.status || null
+    };
   }
 
   async scanTicket(ticketId: string) {
-    // 1. Find the attendee by ticket ID
     const attendee = await this.attendeeRepository.findOneBy({ ticketId });
 
     if (!attendee) {
       throw new Error('Ticket not found');
     }
 
-    // 2. Update status to "Checked In"
     attendee.status = 'Checked In';
     return this.attendeeRepository.save(attendee);
   }
 
-  // 🌟 UPGRADED: Changes status instead of erasing from database
+  // 🌟 NEW: The function that updates status in MySQL
+  async updateStatus(ticketId: string, status: string) {
+    const attendee = await this.attendeeRepository.findOne({ where: { ticketId } });
+    
+    if (!attendee) {
+      throw new NotFoundException(`Attendee with Ticket ID ${ticketId} not found`);
+    }
+
+    attendee.status = status;
+    return await this.attendeeRepository.save(attendee);
+  }
+
   async remove(id: number) {
     const attendee = await this.attendeeRepository.findOneBy({ id });
     if (attendee) {

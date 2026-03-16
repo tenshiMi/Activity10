@@ -37,4 +37,10 @@ export class Event {
 
     @Column({ nullable: true })
     imageUrl: string;
+
+    @Column({ nullable: true })
+    bannerUrl: string;
+
+    @Column({ type: 'int', default: 0 })
+    capacity: number;
 }

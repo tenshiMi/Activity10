@@ -38,6 +38,22 @@ export class AuthService {
   
 
   async login(user: any) {
+    // 🌟 THE MISSING RESCUE LOGIC:
+    // If they log in successfully but are archived/inactive, wake the account back up!
+    if (!user.isActive || user.isArchived) {
+      await this.usersService.update(user.id, {
+        isActive: true,
+        isArchived: false,
+        archivedAt: null
+      } as any);
+      
+      console.log(`✅ Account rescued! ${user.email} logged in and was automatically unarchived.`);
+      
+      // Update the local object so the frontend gets the correct active status instantly
+      user.isActive = true;
+      user.isArchived = false;
+    }
+
     const payload = { email: user.email, sub: user.id, role: user.role };
     return {
       access_token: this.jwtService.sign(payload),

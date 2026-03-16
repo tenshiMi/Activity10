@@ -16,14 +16,22 @@ export class UsersController {
     return this.usersService.create(createUserDto);
   }
 
-  // NEW ENDPOINT: Verify Email
-  @Post('verify-email')
+  // 🌟 FIX: Changed route to '/verify' and the body key to 'code' to match your React code!
+  @Post('verify')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Verify user email using OTP' })
   @ApiResponse({ status: 200, description: 'Email verified successfully' })
   @ApiResponse({ status: 400, description: 'Invalid or expired OTP' })
-  verifyEmail(@Body() body: { email: string; otp: string }) {
-    return this.usersService.verifyEmailOtp(body.email, body.otp);
+  verifyEmail(@Body() body: { email: string; code: string }) {
+    // We pass body.code into your service's OTP parameter
+    return this.usersService.verifyEmailOtp(body.email, body.code);
+  }
+
+  @Post('admin')
+  @ApiOperation({ summary: 'Admin direct user creation (No OTP)' })
+  @ApiResponse({ status: 201, description: 'User created and saved to DB instantly' })
+  createDirectly(@Body() createUserDto: CreateUserDto) {
+    return this.usersService.createDirectly(createUserDto);
   }
 
   @Get()
@@ -33,7 +41,6 @@ export class UsersController {
     return this.usersService.findAll();
   }
 
-  // 🌟 FIX: Added the missing UPDATE endpoints (Supports both PUT and PATCH)
   @Patch(':id')
   @ApiOperation({ summary: 'Update a user by ID (Partial Update)' })
   @ApiResponse({ status: 200, description: 'User updated successfully' })

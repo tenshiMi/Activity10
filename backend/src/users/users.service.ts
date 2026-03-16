@@ -61,6 +61,28 @@ export class UsersService {
     return { message: 'OTP sent. Please verify your email.' };
   }
 
+  // 🌟 NEW: Direct DB Insert for Admin Panel (Bypass OTP)
+  async createDirectly(createUserDto: CreateUserDto) {
+    const { password, email, ...rest } = createUserDto;
+    
+    const existingUser = await this.findOneByEmail(email);
+    if (existingUser) {
+      throw new BadRequestException('This email is already registered.');
+    }
+
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+    const newUser = this.usersRepository.create({
+      ...rest,
+      email,
+      password: hashedPassword,
+      isActive: true, // Forces them to be instantly active!
+    });
+
+    return await this.usersRepository.save(newUser);
+  }
+
   // 2. Verify Email OTP and Save to Database
   async verifyEmailOtp(email: string, otp: string) {
     const pendingUser = this.pendingUsers.get(email);

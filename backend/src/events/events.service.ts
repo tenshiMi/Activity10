@@ -16,19 +16,32 @@ export class EventsService {
         return this.eventsRepository.save(createEventDto);
     }
 
-    findAll() {
-        return this.eventsRepository.find();
+    // 🌟 FIX: Uses Raw SQL to count attendees for Admin View
+    async findAll() {
+        return this.eventsRepository.query(`
+            SELECT event.*, COUNT(attendee.id) as ticketsSold
+            FROM event
+            LEFT JOIN attendee ON event.id = attendee.eventId
+            GROUP BY event.id
+        `);
     }
 
-    findByOrganizer(organizerId: number) {
-        return this.eventsRepository.find({ where: { organizerId } });
+    // 🌟 FIX: Uses Raw SQL to count attendees for Organizer View
+    async findByOrganizer(organizerId: number) {
+        return this.eventsRepository.query(`
+            SELECT event.*, COUNT(attendee.id) as ticketsSold
+            FROM event
+            LEFT JOIN attendee ON event.id = attendee.eventId
+            WHERE event.organizerId = ?
+            GROUP BY event.id
+        `, [organizerId]);
     }
 
     findOne(id: number) {
         return this.eventsRepository.findOneBy({ id });
     }
 
-    // 🌟 CHANGED: This now "Soft Deletes" by toggling the archive status!
+    // This now "Soft Deletes" by toggling the archive status!
     async remove(id: number) {
         const event = await this.eventsRepository.findOneBy({ id });
         if (event) {
