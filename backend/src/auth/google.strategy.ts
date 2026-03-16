@@ -6,10 +6,18 @@ import { UsersService } from '../users/users.service';
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   constructor(private usersService: UsersService) {
+    const clientID = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    const callbackURL = process.env.GOOGLE_CALLBACK_URL ?? 'http://localhost:3000/auth/google/callback';
+
+    if (!clientID || !clientSecret) {
+      throw new Error('Google OAuth client ID and secret must be set in environment variables (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET).');
+    }
+
     super({
-      clientID: '92691865305-p5ti8qa4u8vkkn4a85nm9ngmegt0v11l.apps.googleusercontent.com',         // <-- PASTE YOUR ID HERE
-      clientSecret: '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', // <-- PASTE YOUR SECRET HERE
-      callbackURL: 'http://localhost:3000/auth/google/callback', // Must match Google Console exactly
+      clientID,
+      clientSecret,
+      callbackURL,
       scope: ['email', 'profile'],
     });
   }
