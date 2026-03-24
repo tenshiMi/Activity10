@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn} from 'typeorm';
 
 @Entity()
 export class User {
@@ -30,5 +30,8 @@ export class User {
   isArchived: boolean;
 
   @Column({ type: 'timestamp', nullable: true })
-  archivedAt: Date; // 🌟 We need to know WHEN they were archived!
+  archivedAt: Date; 
+
+  @CreateDateColumn()
+  createdAt: Date;
 }

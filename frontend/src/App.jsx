@@ -18,6 +18,7 @@ import AdminLayout from './components/AdminLayout';
 import ManageUsers from './pages/admin/ManageUsers';
 import Reports from './pages/admin/Reports';
 import AdminCreateEvent from './pages/admin/CreateEvent'; 
+import AdminDashboard from './pages/admin/AdminDashboard';
 
 // 🌟 BULLETPROOF NAVBAR HIDER
 function AppContent() {
@@ -56,7 +57,7 @@ function AppContent() {
         <Route path="/organizer/scan" element={<ScannerPage />} />
 
         <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<OrganizerDashboard />} />
+          <Route index element={<AdminDashboard />} />
           <Route path="users" element={<ManageUsers />} />
           <Route path="reports" element={<Reports />} />
           <Route path="create" element={<AdminCreateEvent />} /> 

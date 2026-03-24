@@ -6,10 +6,9 @@ import { Mail, Lock, User, ShieldCheck, AlertCircle, CheckCircle2, XCircle, Load
 export default function Signup() {
   const navigate = useNavigate();
   
-  // 🌟 STATE MANAGEMENT
   const [step, setStep] = useState(1);
   const [verificationCode, setVerificationCode] = useState('');
-  const [showSuccessModal, setShowSuccessModal] = useState(false); // 🌟 NEW: Controls the success popup
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   
@@ -50,9 +49,6 @@ export default function Signup() {
     if (errorMessage) setErrorMessage('');
   };
 
-  // ==========================================
-  // STEP 1: INITIAL REGISTRATION
-  // ==========================================
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (formData.password !== formData.confirmPassword) {
@@ -85,9 +81,6 @@ export default function Signup() {
     }
   };
 
-  // ==========================================
-  // STEP 2: VERIFY OTP CODE
-  // ==========================================
   const handleVerify = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -99,7 +92,6 @@ export default function Signup() {
         code: verificationCode 
       });
       
-      // 🌟 SHOW MODAL INSTEAD OF INSTANT REDIRECT
       setShowSuccessModal(true);
       
     } catch (error) {
@@ -113,7 +105,6 @@ export default function Signup() {
   return (
     <div className="flex h-screen w-full overflow-hidden bg-gray-900">
       
-      {/* LEFT SIDE: Fixed Image Slideshow */}
       <div className="relative hidden lg:block lg:w-[55%] h-full bg-black z-0">
         {images.map((img, index) => (
           <img
@@ -149,9 +140,7 @@ export default function Signup() {
         </div>
       </div>
 
-      {/* RIGHT SIDE: Beautiful Airy Light Theme */}
       <div className="w-full lg:w-[45%] h-full flex flex-col relative bg-gradient-to-br from-indigo-50/50 via-white to-purple-50/50 z-30 shadow-[-25px_0_50px_-12px_rgba(0,0,0,0.6)] overflow-y-auto">
-        
         <div className="flex-1 w-full max-w-md mx-auto py-12 px-8 sm:px-4 flex flex-col justify-center">
           
           <div className="text-center mb-10">
@@ -173,11 +162,9 @@ export default function Signup() {
             </div>
           )}
 
-          {/* ========================================== */}
-          {/* STEP 1: SIGNUP FORM */}
-          {/* ========================================== */}
           {step === 1 && (
             <form onSubmit={handleSubmit} className="space-y-4">
+
               <div className="flex gap-4">
                 <div className="flex-1">
                   <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">First Name</label>
@@ -187,6 +174,9 @@ export default function Signup() {
                     </div>
                     <input
                       type="text" name="firstName" required value={formData.firstName} onChange={handleChange}
+                      readOnly // 🌟 STARTS READ-ONLY
+                      onFocus={(e) => e.target.removeAttribute('readonly')} // 🌟 UNLOCKS
+                      autoComplete="off"
                       className="block w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all text-gray-900 font-medium bg-white shadow-sm"
                       placeholder="John"
                     />
@@ -196,6 +186,9 @@ export default function Signup() {
                   <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Last Name</label>
                   <input
                     type="text" name="lastName" required value={formData.lastName} onChange={handleChange}
+                    readOnly // 🌟 STARTS READ-ONLY
+                    onFocus={(e) => e.target.removeAttribute('readonly')} // 🌟 UNLOCKS
+                    autoComplete="off"
                     className="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all text-gray-900 font-medium bg-white shadow-sm"
                     placeholder="Doe"
                   />
@@ -210,6 +203,9 @@ export default function Signup() {
                   </div>
                   <input
                     type="email" name="email" required value={formData.email} onChange={handleChange}
+                    readOnly // 🌟 STARTS READ-ONLY
+                    onFocus={(e) => e.target.removeAttribute('readonly')} // 🌟 UNLOCKS
+                    autoComplete="off"
                     className="block w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all text-gray-900 font-medium bg-white shadow-sm"
                     placeholder="john@example.com"
                   />
@@ -224,6 +220,9 @@ export default function Signup() {
                   </div>
                   <input
                     type="password" name="password" required value={formData.password} onChange={handleChange}
+                    readOnly // 🌟 STARTS READ-ONLY
+                    onFocus={(e) => e.target.removeAttribute('readonly')} // 🌟 UNLOCKS
+                    autoComplete="off"
                     className="block w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all text-gray-900 font-medium bg-white shadow-sm"
                     placeholder="••••••••"
                   />
@@ -257,6 +256,9 @@ export default function Signup() {
                   </div>
                   <input
                     type="password" name="confirmPassword" required value={formData.confirmPassword} onChange={handleChange}
+                    readOnly // 🌟 STARTS READ-ONLY
+                    onFocus={(e) => e.target.removeAttribute('readonly')} // 🌟 UNLOCKS
+                    autoComplete="off"
                     className={`block w-full pl-11 pr-4 py-3 border rounded-xl focus:ring-2 focus:border-transparent outline-none transition-all text-gray-900 font-medium bg-white shadow-sm ${
                       formData.confirmPassword && formData.password !== formData.confirmPassword 
                         ? 'border-red-300 focus:ring-red-200 bg-red-50 text-red-900' 
@@ -292,9 +294,6 @@ export default function Signup() {
             </form>
           )}
 
-          {/* ========================================== */}
-          {/* STEP 2: VERIFICATION FORM */}
-          {/* ========================================== */}
           {step === 2 && (
             <form onSubmit={handleVerify} className="space-y-6">
               <div>
@@ -342,7 +341,6 @@ export default function Signup() {
         </div>
       </div>
 
-      {/* 🌟 SUCCESS MODAL */}
       {showSuccessModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm border border-gray-100 text-center transform transition-all scale-100 opacity-100 animate-in fade-in zoom-in duration-200">

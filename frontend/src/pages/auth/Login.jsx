@@ -35,7 +35,6 @@ export default function Login() {
   
   const [reactivateModal, setReactivateModal] = useState({ show: false, email: '', otp: '', loading: false });
 
-  // Handle Google OAuth Redirect
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
     const token = queryParams.get('token');
@@ -199,6 +198,9 @@ export default function Login() {
                   required
                   value={formData.email}
                   onChange={handleChange}
+                  readOnly // 🌟 STARTS READ-ONLY TO BLOCK BROWSER
+                  onFocus={(e) => e.target.removeAttribute('readonly')} // 🌟 UNLOCKS WHEN CLICKED
+                  autoComplete="off" 
                   className="block w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all text-gray-900 font-medium bg-white shadow-sm"
                   placeholder="john@example.com"
                 />
@@ -217,6 +219,9 @@ export default function Login() {
                   required
                   value={formData.password}
                   onChange={handleChange}
+                  readOnly // 🌟 STARTS READ-ONLY TO BLOCK BROWSER
+                  onFocus={(e) => e.target.removeAttribute('readonly')} // 🌟 UNLOCKS WHEN CLICKED
+                  autoComplete="off" 
                   className="block w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all text-gray-900 font-medium bg-white shadow-sm"
                   placeholder="••••••••"
                 />

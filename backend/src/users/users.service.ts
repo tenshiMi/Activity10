@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan } from 'typeorm'; // 🌟 Added LessThan for the Date check
-import { Cron, CronExpression } from '@nestjs/schedule'; // 🌟 Added Cron decorators
+import { Repository, LessThan } from 'typeorm'; 
+import { Cron, CronExpression } from '@nestjs/schedule'; 
 import { User } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import * as bcrypt from 'bcryptjs';
@@ -9,10 +9,8 @@ import * as nodemailer from 'nodemailer';
 
 @Injectable()
 export class UsersService {
-  // Temporary memory storage for unverified signups
   private pendingUsers = new Map<string, any>();
 
-  // Setup Nodemailer transporter
   private transporter = nodemailer.createTransport({
     service: 'gmail', 
     auth: {
@@ -26,7 +24,6 @@ export class UsersService {
     private usersRepository: Repository<User>,
   ) {}
 
-  // 1. Create User (Temporarily in Memory) & Send OTP
   async create(createUserDto: CreateUserDto) {
     const { password, email, ...rest } = createUserDto;
     
@@ -61,7 +58,6 @@ export class UsersService {
     return { message: 'OTP sent. Please verify your email.' };
   }
 
-  // 🌟 NEW: Direct DB Insert for Admin Panel (Bypass OTP)
   async createDirectly(createUserDto: CreateUserDto) {
     const { password, email, ...rest } = createUserDto;
     
@@ -77,13 +73,12 @@ export class UsersService {
       ...rest,
       email,
       password: hashedPassword,
-      isActive: true, // Forces them to be instantly active!
+      isActive: true, 
     });
 
     return await this.usersRepository.save(newUser);
   }
 
-  // 2. Verify Email OTP and Save to Database
   async verifyEmailOtp(email: string, otp: string) {
     const pendingUser = this.pendingUsers.get(email);
     if (!pendingUser) {
@@ -115,7 +110,6 @@ export class UsersService {
     return { message: 'Email verified successfully! You can now log in.' };
   }
 
-  // Bypass OTP for Google Login
   async activateGoogleUser(email: string, name: string, tempPassword: string) {
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(tempPassword, saltRounds);
@@ -131,7 +125,6 @@ export class UsersService {
     return await this.usersRepository.save(newUser);
   }
 
-  // 3. Find by Email (For Login)
   async findOneByEmail(email: string): Promise<User | null> {
     return this.usersRepository.findOne({ where: { email } });
   }
@@ -140,7 +133,6 @@ export class UsersService {
     return this.usersRepository.find();
   }
 
-  // Soft-Delete by toggling isActive status
   async remove(id: number) {
     const user = await this.usersRepository.findOne({ where: { id } });
     if (user) {
@@ -149,27 +141,34 @@ export class UsersService {
     return null;
   }
 
-  // Update User (For Forgot Password Reset)
+  // 🌟 FIX: Updated this method to sync changes to the Attendee table!
   async update(id: number, updateData: Partial<User>) {
+    const existingUser = await this.usersRepository.findOne({ where: { id } });
+    if (!existingUser) throw new NotFoundException('User not found');
+
+    // 1. Update the User profile
     await this.usersRepository.update(id, updateData);
+
+    // 2. If the name or email changed, automatically update their Tickets!
+    if (updateData.name || updateData.email) {
+      const newName = updateData.name || existingUser.name;
+      const newEmail = updateData.email || existingUser.email;
+
+      await this.usersRepository.query(
+        `UPDATE attendee SET name = ?, email = ? WHERE email = ?`,
+        [newName, newEmail, existingUser.email]
+      );
+    }
+
     return this.usersRepository.findOne({ where: { id } });
   }
 
-  // ==========================================
-  // 🌟 AUTOMATED 60-DAY CLEANUP CRON JOB 🌟
-  // ==========================================
-
-  // I set this to EVERY_10_SECONDS so you can test it right now!
-  // Once you see it working in your terminal, change it back to EVERY_DAY_AT_MIDNIGHT
   @Cron(CronExpression.EVERY_10_SECONDS)
   async handleArchivedUsersCleanup() {
     console.log('🧹 Running background cleanup for archived users...');
-
-    // Calculate the exact date 60 days ago
     const sixtyDaysAgo = new Date();
     sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
 
-    // Find all users who were archived BEFORE that date
     const usersToDelete = await this.usersRepository.find({
       where: {
         isArchived: true,
@@ -177,7 +176,6 @@ export class UsersService {
       },
     });
 
-    // If we found any, delete them permanently
     if (usersToDelete.length > 0) {
       await this.usersRepository.remove(usersToDelete);
       console.log(`✅ Permanently deleted ${usersToDelete.length} expired accounts from the database.`);
