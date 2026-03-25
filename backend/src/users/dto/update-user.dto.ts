@@ -7,4 +7,8 @@ export class UpdateUserDto extends PartialType(CreateUserDto) {
   archivedAt?: Date;
   resetOtp?: string;
   resetOtpExpires?: Date;
+
+  // 🌟 NEW: Add these so NestJS knows to accept them from the frontend!
+  username?: string;
+  avatarUrl?: string;
 }

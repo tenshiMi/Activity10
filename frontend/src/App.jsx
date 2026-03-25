@@ -7,6 +7,7 @@ import Navbar from './components/Navbar';
 import Home from './pages/attendee/Home'; 
 import EventDetails from './pages/attendee/EventDetails';
 import MyTickets from './pages/attendee/MyTickets';
+import Profile from './components/Profile'; // 🌟 NEW: Import the Profile component (adjust path if needed)
 
 import DashboardLayout from './components/DashboardLayout';
 import OrganizerDashboard from './pages/organizer/Dashboard';
@@ -48,6 +49,7 @@ function AppContent() {
         <Route path="/" element={<Home />} />
         <Route path="/event/:id" element={<EventDetails />} />
         <Route path="/my-tickets" element={<MyTickets />} />
+        <Route path="/profile" element={<Profile />} /> {/* 🌟 NEW: Profile Route */}
 
         <Route path="/organizer" element={<DashboardLayout />}>
           <Route index element={<OrganizerDashboard />} />

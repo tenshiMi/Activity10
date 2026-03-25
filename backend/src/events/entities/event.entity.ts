@@ -9,7 +9,7 @@ export class Event {
     title: string;
 
     @Column()
-    date: string; // Storing as string for simplicity, can be Date
+    date: string; 
 
     @Column()
     time: string;
@@ -26,11 +26,11 @@ export class Event {
     @Column()
     price: string;
     
-    @Column({ nullable: true }) // Allow it to be empty initially
+    @Column({ nullable: true }) 
     announcement: string;
 
     @Column()
-    organizerId: number; // Add organizer ID to associate events with creators
+    organizerId: number; 
 
     @Column({ default: false })
     isArchived: boolean;
@@ -43,4 +43,7 @@ export class Event {
 
     @Column({ type: 'int', default: 0 })
     capacity: number;
+
+    @Column({ default: 'Pending' })
+    status: string;
 }

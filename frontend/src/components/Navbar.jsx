@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Calendar, LogOut, User } from 'lucide-react';
+import { Calendar, LogOut } from 'lucide-react';
+import NotificationBell from './NotificationBell'; 
 
 export default function Navbar() {
   const navigate = useNavigate();
@@ -12,20 +13,22 @@ export default function Navbar() {
     navigate('/login');
   };
 
+  // 🌟 NEW: Get the saved avatar or generate the initials avatar
+  const displayAvatar = user?.avatarUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${user?.name || 'User'}&backgroundColor=2563eb`;
+
   return (
-    // 🌟 FIX: Added 'sticky top-0 z-50 bg-white' to completely lock it to the screen!
-    <nav className="sticky top-0 z-50 w-full bg-white border-b border-gray-200 shadow-sm">
-      <div className="px-4 sm:px-6 lg:px-8">
+    <nav className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-md border-b border-gray-200/80 shadow-sm font-sans">
+      <div className="max-w-[1600px] mx-auto px-6">
         <div className="flex justify-between items-center h-20">
           
-          {/* Left Side: Logo */}
-          <Link to="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-md cursor-pointer hover:bg-blue-700 transition">
-              <Calendar className="text-white w-6 h-6" />
+          {/* Left Side: Premium Logo */}
+          <Link to="/" className="flex items-center gap-3 group">
+            <div className="w-11 h-11 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-md shadow-blue-600/20 group-hover:shadow-blue-600/40 transition-all duration-300">
+              <Calendar className="text-white w-6 h-6" strokeWidth={2.5} />
             </div>
             <div>
-              <span className="block font-extrabold text-xl text-gray-900 leading-none">Harmony Events</span>
-              <span className="block text-[10px] text-gray-500 font-bold tracking-wider mt-0.5">EVENT MANAGEMENT PLATFORM</span>
+              <span className="block font-extrabold text-xl text-gray-900 leading-none tracking-tight">Harmony Events</span>
+              <span className="block text-[10px] text-gray-500 font-bold tracking-widest mt-0.5">PLATFORM</span>
             </div>
           </Link>
 
@@ -33,33 +36,45 @@ export default function Navbar() {
           <div className="flex items-center gap-4">
             {user ? (
               <>
-                {/* User Profile Pill */}
-                <div className="hidden sm:flex items-center gap-3 bg-gray-50 border border-gray-200 py-1.5 px-4 rounded-full">
-                  <div className="w-7 h-7 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center">
-                    <User size={16} />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-sm font-bold text-gray-900 leading-none">{user.name || 'User'}</span>
-                    <span className="text-[10px] font-bold text-gray-500 uppercase mt-0.5">{user.role || 'ATTENDEE'}</span>
-                  </div>
+                {/* Notification Bell */}
+                <div className="bg-white border border-gray-200 shadow-sm rounded-full p-1 flex items-center">
+                  <NotificationBell />
                 </div>
+
+                <div className="h-8 w-px bg-gray-200 mx-1 hidden sm:block"></div>
+
+                {/* 🌟 UPGRADED: Profile Pill with Dynamic Picture */}
+                <Link 
+                  to="/profile" 
+                  className="hidden sm:flex items-center gap-3 bg-white border border-gray-200 hover:border-blue-200 hover:bg-blue-50 transition-all py-1.5 pl-1.5 pr-5 rounded-full shadow-sm cursor-pointer active:scale-95 group"
+                  title="Edit Profile"
+                >
+                  <div className="w-9 h-9 rounded-full overflow-hidden border border-blue-100 shadow-inner shrink-0 group-hover:ring-2 group-hover:ring-blue-500 transition-all">
+                    <img src={displayAvatar} alt={user.name} className="w-full h-full object-cover" />
+                  </div>
+                  <div className="flex flex-col text-left">
+                    <span className="text-sm font-extrabold text-gray-900 leading-none group-hover:text-blue-700 transition-colors">{user.name || 'User'}</span>
+                    <span className="text-[10px] font-bold text-blue-600 uppercase mt-0.5 tracking-wider">{user.role || 'ATTENDEE'}</span>
+                  </div>
+                </Link>
                 
                 {/* Logout Button */}
                 <button 
                   onClick={handleLogout}
-                  className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 hover:bg-red-50 hover:text-red-600 hover:border-red-200 px-4 py-2.5 rounded-xl text-sm font-bold transition shadow-sm cursor-pointer"
+                  className="flex items-center gap-2 bg-white border border-gray-200 text-gray-400 hover:bg-red-50 hover:text-red-600 hover:border-red-100 px-4 py-2.5 rounded-full sm:rounded-xl text-sm font-bold transition-all shadow-sm cursor-pointer active:scale-95"
+                  title="Logout"
                 >
-                  <LogOut size={18} />
+                  <LogOut size={18} strokeWidth={2.5} />
                   <span className="hidden sm:block">Logout</span>
                 </button>
               </>
             ) : (
               <>
                 {/* Logged Out Buttons */}
-                <Link to="/login" className="text-sm font-bold text-gray-600 hover:text-gray-900 transition px-4 py-2">
+                <Link to="/login" className="text-sm font-bold text-gray-600 hover:text-blue-600 transition px-4 py-2">
                   Sign In
                 </Link>
-                <Link to="/signup" className="bg-gray-900 hover:bg-gray-800 text-white text-sm font-bold px-6 py-2.5 rounded-xl transition shadow-md">
+                <Link to="/signup" className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold px-6 py-3 rounded-xl transition-all shadow-md shadow-blue-600/20 active:scale-95">
                   Get Started
                 </Link>
               </>

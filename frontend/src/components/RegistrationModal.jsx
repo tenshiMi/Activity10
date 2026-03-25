@@ -2,14 +2,14 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { X, User, Mail, Ticket, Lock, ShieldCheck, CreditCard, Loader2 } from 'lucide-react';
 
-export default function RegistrationModal({ isOpen, onClose, eventTitle, eventId, eventPrice, userInfo = null }) {
+// 🌟 FIX: Added organizerId to the props so we know who to notify!
+export default function RegistrationModal({ isOpen, onClose, eventTitle, eventId, eventPrice, organizerId, userInfo = null }) {
   const [formData, setFormData] = useState({
     name: '',
     email: ''
   });
   
-  // 🌟 UPGRADED STATE: Track the exact step of the checkout
-  const [paymentStep, setPaymentStep] = useState('idle'); // 'idle', 'processing', 'verifying', 'done'
+  const [paymentStep, setPaymentStep] = useState('idle'); 
   const [modal, setModal] = useState({ show: false, type: 'success', title: '', message: '' });
 
   useEffect(() => {
@@ -18,7 +18,6 @@ export default function RegistrationModal({ isOpen, onClose, eventTitle, eventId
     } else {
       setFormData({ name: '', email: '' });
     }
-    // Reset payment step when modal opens
     if (isOpen) setPaymentStep('idle');
   }, [userInfo, isOpen]);
 
@@ -30,12 +29,9 @@ export default function RegistrationModal({ isOpen, onClose, eventTitle, eventId
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // 🌟 STEP 1: Start Payment Simulation
     setPaymentStep('processing');
 
     try {
-      // First check if already registered
       const checkResponse = await axios.get(`http://localhost:3000/attendees/check-registration?email=${formData.email}&eventId=${eventId}`);
       
       if (checkResponse.data.isRegistered) {
@@ -44,19 +40,27 @@ export default function RegistrationModal({ isOpen, onClose, eventTitle, eventId
         return;
       }
 
-      // 🌟 STEP 2: Fake a 1.5 second delay for "Connecting to Bank/e-Wallet"
       await new Promise(resolve => setTimeout(resolve, 1500));
-      setPaymentStep('verifying'); // Update UI text
+      setPaymentStep('verifying'); 
       
-      // 🌟 STEP 3: Fake another 1 second delay for "Verifying Payment"
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // 🌟 STEP 4: Actually register them in the database!
+      // 1. Register the attendee
       await axios.post('http://localhost:3000/attendees', {
         ...formData,
         eventId: eventId.toString(),
         amountPaid: eventPrice || '0' 
       });
+
+      // 🌟 2. NEW: Fire the Notification to the Organizer!
+      if (organizerId) {
+        await axios.post('http://localhost:3000/notifications', {
+            userId: organizerId,
+            title: 'New Ticket Sold! 🎟️',
+            message: `${formData.name} just registered for "${eventTitle}".`,
+            type: 'TICKET' 
+        });
+      }
       
       setPaymentStep('done');
       setModal({ show: true, type: 'success', title: 'Payment Successful!', message: `Your digital ticket for ${eventTitle} has been sent to your email.` });
@@ -76,7 +80,6 @@ export default function RegistrationModal({ isOpen, onClose, eventTitle, eventId
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all relative">
         
-        {/* 🌟 PAYMENT OVERLAY: Shows up when button is clicked! */}
         {paymentStep !== 'idle' && (
           <div className="absolute inset-0 bg-white/95 backdrop-blur-md z-10 flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-300">
              {paymentStep === 'done' ? (
@@ -96,7 +99,6 @@ export default function RegistrationModal({ isOpen, onClose, eventTitle, eventId
           </div>
         )}
 
-        {/* Header */}
         <div className="bg-gray-50 px-6 py-5 border-b flex justify-between items-center">
           <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
             <ShieldCheck className="text-blue-600" size={20} /> Secure Checkout
@@ -108,7 +110,6 @@ export default function RegistrationModal({ isOpen, onClose, eventTitle, eventId
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           
-          {/* Order Summary Box */}
           <div className="bg-blue-50/50 border border-blue-100 rounded-2xl p-5">
             <h4 className="text-xs font-bold text-blue-800 uppercase tracking-wider mb-4">Order Summary</h4>
             <div className="flex justify-between items-start gap-4 mb-3">

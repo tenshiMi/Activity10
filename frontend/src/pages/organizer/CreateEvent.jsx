@@ -32,7 +32,7 @@ export default function CreateEvent() {
         price: eventToEdit?.price || '',
         category: eventToEdit?.category || '',
         announcement: eventToEdit?.announcement || '',
-        capacity: eventToEdit?.capacity || '', // 🌟 NEW: Ticket Capacity
+        capacity: eventToEdit?.capacity || '', 
         organizerId: eventToEdit?.organizerId || user.id || 0
     });
 
@@ -43,11 +43,17 @@ export default function CreateEvent() {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
+    const handlePriceBlur = (e) => {
+        const val = parseFloat(e.target.value);
+        if (!isNaN(val)) {
+            setFormData({ ...formData, price: val.toFixed(2) });
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsLoading(true);
 
-        // Convert capacity and price to numbers before sending
         const payload = {
             ...formData,
             capacity: parseInt(formData.capacity, 10) || 0,
@@ -60,7 +66,32 @@ export default function CreateEvent() {
                 setModal({ show: true, type: 'success', title: 'Success!', message: 'Event updated successfully.' });
             } else {
                 await axios.post('http://localhost:3000/events', payload);
-                setModal({ show: true, type: 'success', title: 'Published!', message: 'Your event is now live.' });
+                
+                // ---------------------------------------------------------
+                // 🌟 NEW: Fetch users to find the Admin, and ring their bell!
+                // ---------------------------------------------------------
+                try {
+                    const usersRes = await axios.get('http://localhost:3000/users');
+                    const admin = usersRes.data.find(u => u.role === 'Admin');
+                    if (admin) {
+                        await axios.post('http://localhost:3000/notifications', {
+                            userId: admin.id, // Notify the Admin
+                            title: 'New Event Proposal 📋',
+                            message: `${user.name || 'An Organizer'} submitted "${payload.title}" for approval.`,
+                            type: 'SYSTEM' // Uses the Amber Alert Icon
+                        });
+                    }
+                } catch (notifErr) {
+                    console.error("Silent error: Failed to notify admin", notifErr);
+                }
+                // ---------------------------------------------------------
+
+                setModal({ 
+                    show: true, 
+                    type: 'success', 
+                    title: 'Submitted for Approval!', 
+                    message: 'Your event has been sent to the Admins. You will be notified once it is approved.' 
+                });
             }
         } catch (error) {
             console.error('Error saving event:', error);
@@ -79,13 +110,13 @@ export default function CreateEvent() {
                     {eventToEdit ? 'Edit Event' : 'Create New Event'}
                 </h1>
                 <p className="text-gray-500 font-medium mt-1">
-                    {eventToEdit ? 'Update your event details below.' : 'Fill in the details to publish a new event.'}
+                    {eventToEdit ? 'Update your event details below.' : 'Fill in the details to propose a new event.'}
                 </p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-8">
                 
-                {/* 🌟 CARD 1: Basic Information */}
+                {/* CARD 1: Basic Information */}
                 <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
                     <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
                         <Type className="text-blue-600" size={20} /> Basic Information
@@ -150,7 +181,7 @@ export default function CreateEvent() {
                     </div>
                 </div>
 
-                {/* 🌟 CARD 2: Date & Location */}
+                {/* CARD 2: Date & Location */}
                 <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
                     <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
                         <MapPin className="text-emerald-500" size={20} /> Date & Location
@@ -191,7 +222,7 @@ export default function CreateEvent() {
                     </div>
                 </div>
 
-                {/* 🌟 CARD 3: Ticketing & Capacity */}
+                {/* CARD 3: Ticketing & Capacity */}
                 <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
                     <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
                         <Ticket className="text-purple-500" size={20} /> Ticketing
@@ -204,14 +235,13 @@ export default function CreateEvent() {
                                     <PhilippinePeso className="h-5 w-5 text-gray-400" />
                                 </div>
                                 <input
-                                    type="number" name="price" step="0.01" min="0" required value={formData.price} onChange={handleChange}
+                                    type="number" name="price" step="0.01" min="0" required value={formData.price} onChange={handleChange} onBlur={handlePriceBlur}
                                     className="block w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-600 outline-none transition-all text-gray-900 font-bold"
                                     placeholder="0 for Free"
                                 />
                             </div>
                         </div>
                         
-                        {/* 🌟 NEW: Capacity Input */}
                         <div>
                             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Maximum Capacity</label>
                             <div className="relative">
@@ -228,7 +258,7 @@ export default function CreateEvent() {
                     </div>
                 </div>
 
-                {/* 🌟 CARD 4: Additional Details */}
+                {/* CARD 4: Additional Details */}
                 <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 space-y-8">
                     <div>
                         <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
@@ -257,14 +287,23 @@ export default function CreateEvent() {
                 </div>
 
                 {/* Submit Action */}
-                <div className="flex justify-end pt-4">
-                    <button
-                        type="submit" disabled={isLoading}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-10 py-4 rounded-xl font-bold text-lg transition-all shadow-lg shadow-blue-600/20 disabled:opacity-70 flex items-center gap-2"
-                    >
-                        {isLoading ? <Loader2 className="animate-spin" size={24} /> : eventToEdit ? 'Save Changes' : 'Publish Event'}
-                    </button>
-                </div>
+                {/* 🌟 PREMIUM ACTION FOOTER */}
+<div className="mt-8 bg-slate-50 border border-slate-200 p-6 rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-inner">
+    <div className="text-sm font-medium text-slate-500 text-center sm:text-left">
+        Please verify all details before submitting.<br/>
+        <span className="text-amber-600 font-bold flex items-center gap-1 mt-1 justify-center sm:justify-start">
+            <Clock size={14} /> Approvals may take up to 24 hours.
+        </span>
+    </div>
+    
+    <button 
+        type="submit" 
+        disabled={isLoading} 
+        className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-12 py-4 rounded-2xl font-black text-lg transition-all shadow-xl shadow-blue-600/30 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 active:scale-95"
+    >
+        {isLoading ? <Loader2 className="animate-spin" size={24} /> : eventToEdit ? 'Save Changes' : 'Submit for Approval'}
+    </button>
+</div>
             </form>
 
             {/* Success/Error Modal */}

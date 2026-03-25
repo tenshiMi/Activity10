@@ -34,4 +34,13 @@ export class User {
 
   @CreateDateColumn()
   createdAt: Date;
+
+  // 🌟 NEW: Add Username
+  @Column({ nullable: true, unique: true })
+  username: string;
+
+  // 🌟 NEW: Add Avatar URL (Set type to 'text' to handle long Base64 image strings!)
+  @Column({ type: 'text', nullable: true })
+  avatarUrl: string;
+  
 }

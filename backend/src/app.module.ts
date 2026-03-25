@@ -1,14 +1,15 @@
 import { Module } from '@nestjs/common';
-import { ScheduleModule } from '@nestjs/schedule'; // 🌟 Added ScheduleModule
+import { ScheduleModule } from '@nestjs/schedule'; 
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { EventsModule } from './events/events.module';
 import { AttendeesModule } from './attendees/attendees.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
+import { NotificationsModule } from './notifications/notifications.module'; 
 
 @Module({
   imports: [
-    ScheduleModule.forRoot(), // 🌟 Initialized ScheduleModule here!
+    ScheduleModule.forRoot(), 
     TypeOrmModule.forRoot({
       type: 'mysql',
       host: 'localhost',
@@ -23,6 +24,7 @@ import { AuthModule } from './auth/auth.module';
     AttendeesModule,
     UsersModule,
     AuthModule,
+    NotificationsModule, 
   ],
 })
 export class AppModule {}

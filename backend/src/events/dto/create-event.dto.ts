@@ -25,10 +25,12 @@ export class CreateEventDto {
   @ApiPropertyOptional({ description: 'Special announcement for attendees', example: 'Doors open at 5 PM' })
   announcement?: string;
 
-  // 🌟 FIX: Renamed 'bannerUrl' to 'imageUrl' to match your admin panel
   @ApiPropertyOptional({ description: 'Image URL for the event', example: 'https://example.com/image.jpg' })
   imageUrl?: string;
 
   @ApiProperty({ description: 'Organizer ID', example: 1 })
   organizerId: number;
+
+  @ApiPropertyOptional({ description: 'Event status (Pending, Published, Rejected)', example: 'Published' })
+  status?: string;
 }

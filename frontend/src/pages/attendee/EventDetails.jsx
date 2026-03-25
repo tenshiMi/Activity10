@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
-import { ArrowLeft, Share2, Calendar, Clock, MapPin, BellRing, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Share2, Calendar, Clock, MapPin, BellRing, CheckCircle2, Ticket, Map as MapIcon } from 'lucide-react';
 import RegistrationModal from '../../components/RegistrationModal'; 
 
 export default function EventDetails() {
@@ -22,10 +22,13 @@ export default function EventDetails() {
         setEvent(response.data);
 
         if (isLoggedIn && user?.email) {
-          const checkResponse = await axios.get(`http://localhost:3000/attendees/check-registration?email=${user.email}&eventId=${id}`);
-          setIsRegistered(checkResponse.data.isRegistered);
+          // 🌟 FIX: We fetch the attendees and explicitly make sure the ticket is NOT Cancelled!
+          const attendeesRes = await axios.get('http://localhost:3000/attendees');
+          const hasActiveTicket = attendeesRes.data.some(
+            a => a.email === user.email && String(a.eventId) === String(id) && a.status !== 'Cancelled'
+          );
+          setIsRegistered(hasActiveTicket);
         }
-
         setLoading(false);
       } catch (error) {
         console.error("Error fetching event details:", error);
@@ -35,6 +38,18 @@ export default function EventDetails() {
     fetchEventDetails();
   }, [id, isLoggedIn, user?.email]);
 
+  if (loading) return (
+    <div className="min-h-screen bg-white flex flex-col items-center justify-center">
+      <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+      <p className="text-slate-500 font-bold animate-pulse">Loading Event...</p>
+    </div>
+  );
+
+  if (!event) return <div className="min-h-screen flex items-center justify-center text-gray-500 font-bold text-xl">Event not found.</div>;
+
+  const displayImage = event.imageUrl || event.bannerUrl;
+  const isFree = event.price === '0' || event.price === 'Free' || !event.price;
+
   const getCategoryStyle = (category) => {
     const lowerCat = category?.toLowerCase() || '';
     if (lowerCat.includes('nightlife') || lowerCat.includes('party')) return 'from-slate-900 to-indigo-950';
@@ -43,158 +58,139 @@ export default function EventDetails() {
     if (lowerCat.includes('festival') || lowerCat.includes('expo')) return 'from-emerald-950 to-teal-900';
     if (lowerCat.includes('theater') || lowerCat.includes('comedy')) return 'from-slate-800 to-gray-900';
     if (lowerCat.includes('sport')) return 'from-orange-950 to-amber-950';
-    return 'from-gray-800 to-gray-900'; 
+    return 'from-slate-800 to-slate-900'; 
   };
 
   const formatDate = (dateStr) => {
-    try { return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); } 
+    try { return new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }); } 
     catch { return dateStr; }
   };
 
-  const formatTime = (timeStr) => {
-    if (!timeStr) return '';
-    try {
-      const [hours, minutes] = timeStr.split(':');
-      const h = parseInt(hours, 10);
-      const ampm = h >= 12 ? 'PM' : 'AM';
-      return `${h % 12 || 12}:${minutes} ${ampm}`;
-    } catch { return timeStr; }
-  };
-
-  const handleShare = () => {
-    navigator.clipboard.writeText(window.location.href);
-    alert('Link copied to clipboard!');
-  };
-
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-500">Loading event details...</div>;
-  if (!event) return <div className="min-h-screen flex items-center justify-center text-gray-500">Event not found.</div>;
-
-  // 🌟 FIX: Check for BOTH bannerUrl and imageUrl so old events still show their pictures!
-  const displayImage = event.bannerUrl || event.imageUrl;
-
   return (
-    <div className="min-h-screen bg-gray-50 pb-32">
-      <div className="max-w-4xl mx-auto pt-6 px-4 sm:px-6">
+    <div className="min-h-screen bg-slate-50/50 pb-28 font-sans animate-in fade-in duration-500">
+      <div className="max-w-4xl mx-auto pt-6 px-4">
         
-        {/* Header Banner */}
-        <div className={`relative h-64 md:h-80 rounded-t-3xl flex items-center justify-center overflow-hidden shadow-md ${!displayImage ? `bg-gradient-to-br ${getCategoryStyle(event.category)}` : 'bg-gray-100'}`}>
+        {/* SCALED DOWN HERO IMAGE SECTION */}
+        <div className="relative h-[280px] md:h-[360px] rounded-[2rem] overflow-hidden shadow-xl shadow-blue-900/5">
+          {displayImage ? (
+            <img src={displayImage} alt={event.title} className="w-full h-full object-cover transform hover:scale-105 transition-transform duration-1000" />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-slate-900 to-blue-950 flex items-center justify-center">
+               <Ticket className="text-white/10 w-32 h-32 rotate-12" />
+            </div>
+          )}
           
           <button 
             onClick={() => navigate(-1)} 
-            className="absolute top-6 left-6 z-50 bg-black/30 hover:bg-black/50 border border-white/20 backdrop-blur-md text-white p-2.5 rounded-full transition cursor-pointer"
+            className="absolute top-5 left-5 z-10 bg-white/20 hover:bg-white/30 border border-white/30 backdrop-blur-md text-white p-2.5 rounded-xl transition-all active:scale-95 shadow-lg"
           >
-            <ArrowLeft size={24} />
+            <ArrowLeft size={20} strokeWidth={2.5} />
           </button>
-          
-          {displayImage ? (
-            <>
-              <img src={displayImage} alt={event.title} className="absolute inset-0 w-full h-full object-cover pointer-events-none" />
-              <div className="absolute inset-0 bg-gradient-to-b from-black/50 to-transparent h-24 pointer-events-none"></div>
-            </>
-          ) : (
-            <>
-              <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white to-transparent mix-blend-overlay pointer-events-none"></div>
-              <span className="text-white text-4xl md:text-6xl font-extrabold tracking-widest opacity-40 drop-shadow-lg uppercase text-center px-4 relative z-10 pointer-events-none">
-                {event.category?.split('/')[0] || event.category}
-              </span>
-            </>
-          )}
+
+          <button 
+            onClick={() => { navigator.clipboard.writeText(window.location.href); alert('Event link copied to clipboard!'); }}
+            className="absolute top-5 right-5 z-10 bg-white/20 hover:bg-white/30 border border-white/30 backdrop-blur-md text-white p-2.5 rounded-xl transition-all active:scale-95 shadow-lg"
+            title="Copy Link to Share"
+          >
+            <Share2 size={20} strokeWidth={2.5} />
+          </button>
+
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent opacity-90"></div>
         </div>
 
-        {/* Content Card */}
-        <div className="bg-white rounded-b-3xl shadow-lg border-x border-b border-gray-100 p-6 md:p-10 -mt-2 relative z-10">
+        {/* SCALED DOWN CONTENT CARD */}
+        <div className="bg-white rounded-[2rem] shadow-lg shadow-slate-200/50 border border-slate-100 p-6 md:p-10 -mt-10 relative z-20 mx-3 md:mx-8">
           
-          <div className="flex justify-between items-start gap-4 mb-4">
-            <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 leading-tight tracking-tight">
+          <div className="flex flex-col mb-8">
+            <div className="flex items-center gap-3 mb-4">
+              <span className="px-3 py-1.5 bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-[0.15em] rounded-lg border border-blue-100">
+                {event.category || "General"}
+              </span>
+              <div className="flex items-center gap-1.5 text-emerald-600 font-bold text-xs bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100">
+                  <CheckCircle2 size={14} strokeWidth={2.5} /> Active
+              </div>
+            </div>
+
+            <h1 className="text-3xl md:text-5xl font-black text-slate-950 leading-tight tracking-tight">
               {event.title}
             </h1>
-            <button onClick={handleShare} className="text-gray-400 hover:text-gray-900 transition p-2 bg-gray-50 hover:bg-gray-100 rounded-full border border-transparent hover:border-gray-200 cursor-pointer">
-              <Share2 size={24} />
-            </button>
           </div>
 
-          <div className="inline-block bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm font-bold tracking-wide mb-8 border border-gray-200">
-            Registration Open
-          </div>
-
+          {/* Info Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
-            <div className="flex items-start gap-4">
-              <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 text-gray-600"><Calendar size={24} /></div>
-              <div>
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Date</p>
-                <p className="text-lg font-medium text-gray-900">{formatDate(event.date)}</p>
+            <div className="flex items-center gap-4 p-5 rounded-2xl bg-slate-50 border border-slate-100">
+              <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-md shadow-blue-200 shrink-0">
+                <Calendar size={24} />
               </div>
-            </div>
-            
-            <div className="flex items-start gap-4">
-              <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 text-gray-600"><Clock size={24} /></div>
               <div>
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Time</p>
-                <p className="text-lg font-medium text-gray-900">{formatTime(event.time)}</p>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Date & Time</p>
+                <p className="text-base font-extrabold text-slate-900 leading-snug">{formatDate(event.date)}</p>
+                <p className="text-slate-500 font-bold text-sm">{event.time} PM</p>
               </div>
             </div>
 
-            <div className="flex items-start gap-4 md:col-span-2">
-              <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 text-gray-600"><MapPin size={24} /></div>
+            <div className="flex items-center gap-4 p-5 rounded-2xl bg-slate-50 border border-slate-100">
+              <div className="w-12 h-12 bg-rose-500 rounded-xl flex items-center justify-center text-white shadow-md shadow-rose-200 shrink-0">
+                <MapPin size={24} />
+              </div>
               <div>
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Location</p>
-                <p className="text-lg font-medium text-gray-900">{event.location}</p>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Location</p>
+                <p className="text-base font-extrabold text-slate-900 leading-snug line-clamp-2">{event.location}</p>
               </div>
             </div>
           </div>
 
+          {/* Announcement */}
           {event.announcement && (
-            <div className="mb-10 bg-yellow-50 border border-yellow-200 rounded-2xl p-6 shadow-sm">
-              <h3 className="flex items-center gap-2 text-yellow-800 font-bold mb-2">
-                <BellRing size={20} className="text-yellow-600" />
-                Special Announcement
-              </h3>
-              <p className="text-yellow-900 font-medium whitespace-pre-wrap leading-relaxed">
-                {event.announcement}
-              </p>
+            <div className="mb-10 relative overflow-hidden bg-amber-50 border-l-4 border-amber-400 p-6 rounded-2xl">
+              <div className="flex items-start gap-3">
+                <div className="bg-amber-400 text-white p-2 rounded-lg shadow-sm shrink-0">
+                   <BellRing size={18} strokeWidth={2.5} />
+                </div>
+                <div>
+                  <h3 className="text-amber-900 font-black uppercase text-[10px] tracking-widest mb-1.5">Important Announcement</h3>
+                  <p className="text-amber-800 font-bold text-sm md:text-base leading-relaxed">{event.announcement}</p>
+                </div>
+              </div>
             </div>
           )}
 
-          <div>
-            <h2 className="text-xl font-bold text-gray-900 mb-4">About this Event</h2>
-            <p className="text-gray-600 leading-relaxed whitespace-pre-wrap text-lg">
-              {event.description || 'No description provided.'}
+          {/* Description */}
+          <div className="space-y-4">
+            <h2 className="text-xl font-black text-slate-950 flex items-center gap-3">
+                <div className="w-1.5 h-6 bg-blue-600 rounded-full"></div>
+                About this Event
+            </h2>
+            <p className="text-slate-600 font-medium text-base leading-relaxed whitespace-pre-wrap">
+              {event.description || 'Join us for an unforgettable experience filled with excitement and great company! Limited slots available.'}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Sticky Bottom Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-gray-200 shadow-[0_-8px_15px_-3px_rgba(0,0,0,0.05)] p-4 md:p-6 z-40">
-        <div className="max-w-4xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="text-center md:text-left">
-            <p className="text-sm text-gray-500 font-medium">Price per ticket</p>
-            <p className="text-2xl md:text-3xl font-extrabold text-gray-900 tracking-tight">
-              {event.price === '0' || event.price === 'Free' ? 'Free' : `₱${event.price}`}
-            </p>
+      {/* COMPACT STICKY CHECKOUT BAR */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-slate-200/60 p-4 md:p-5 z-50">
+        <div className="max-w-4xl mx-auto flex flex-row justify-between items-center gap-4 px-2 sm:px-6">
+          
+          <div className="flex flex-col">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Price</p>
+              <p className="text-2xl md:text-3xl font-black text-slate-950 tracking-tight leading-none">
+                  {isFree ? 'FREE' : `₱${event.price}`}
+              </p>
           </div>
           
-          <div className="w-full md:w-auto flex-1 md:flex-none flex justify-end">
+          <div className="flex-shrink-0">
             {!isLoggedIn ? (
-               <button 
-                 onClick={() => navigate('/login')}
-                 className="w-full md:w-auto bg-gray-900 text-white px-10 py-4 rounded-xl font-bold text-lg hover:bg-gray-800 transition shadow-md cursor-pointer"
-               >
-                 Login to Register
+               <button onClick={() => navigate('/login')} className="bg-slate-950 text-white px-6 md:px-10 py-3 md:py-3.5 rounded-xl font-black text-sm md:text-base hover:bg-slate-800 transition-all shadow-lg active:scale-95">
+                 Sign in to Register
                </button>
             ) : isRegistered ? (
-               <Link 
-                 to="/my-tickets"
-                 className="w-full md:w-auto bg-green-50 text-green-700 border border-green-200 px-10 py-4 rounded-xl font-bold text-lg hover:bg-green-100 transition shadow-sm flex items-center justify-center gap-2"
-               >
-                 <CheckCircle size={22} /> You're Going
+               <Link to="/my-tickets" className="bg-emerald-500 text-white px-6 md:px-10 py-3 md:py-3.5 rounded-xl font-black text-sm md:text-base hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/30 flex items-center gap-2 active:scale-95">
+                 <CheckCircle2 size={18} /> You're Going!
                </Link>
             ) : (
-               <button 
-                 onClick={() => setIsModalOpen(true)}
-                 className="w-full md:w-auto bg-blue-600 text-white px-10 py-4 rounded-xl font-bold text-lg hover:bg-blue-700 transition shadow-lg transform hover:-translate-y-0.5 cursor-pointer"
-               >
-                 Register Now
+               <button onClick={() => setIsModalOpen(true)} className="bg-blue-600 text-white px-6 md:px-10 py-3 md:py-3.5 rounded-xl font-black text-sm md:text-base hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/30 active:scale-95 flex items-center gap-2">
+                 <Ticket size={18} strokeWidth={2.5} /> {isFree ? 'Claim Free Ticket' : 'Buy Ticket'}
                </button>
             )}
           </div>
@@ -203,14 +199,12 @@ export default function EventDetails() {
 
       <RegistrationModal
         isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          window.location.reload(); 
-        }}
+        onClose={() => { setIsModalOpen(false); window.location.reload(); }}
         eventTitle={event.title}
         eventId={event.id}
         eventPrice={event.price} 
-        userInfo={isLoggedIn ? user : null}
+        organizerId={event.organizerId}
+        userInfo={user}
       />
     </div>
   );
