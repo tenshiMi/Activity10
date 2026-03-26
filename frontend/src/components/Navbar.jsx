@@ -26,8 +26,8 @@ export default function Navbar() {
             <div className="w-11 h-11 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-md shadow-blue-600/20 group-hover:shadow-blue-600/40 transition-all duration-300">
               <Calendar className="text-white w-6 h-6" strokeWidth={2.5} />
             </div>
-            <div>
-              <span className="block font-extrabold text-xl text-gray-900 leading-none tracking-tight">Harmony Events</span>
+            <div className="hidden sm:block leading-tight">
+              <span className="block font-extrabold text-xl text-gray-900 tracking-tight">Harmony Events</span>
               <span className="block text-[10px] text-gray-500 font-bold tracking-widest mt-0.5">PLATFORM</span>
             </div>
           </Link>

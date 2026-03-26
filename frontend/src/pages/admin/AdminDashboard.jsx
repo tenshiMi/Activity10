@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { api } from '../../lib/api';
 import { 
   Plus, Archive, Settings, Calendar, MapPin, Ticket, 
   Search, Filter, Shield, User, LayoutGrid, List, Eye, X,
@@ -31,9 +31,9 @@ export default function AdminDashboard() {
     try {
       setLoading(true);
       const [eventsRes, usersRes, attendeesRes] = await Promise.all([
-        axios.get('http://localhost:3000/events'),
-        axios.get('http://localhost:3000/users'),
-        axios.get('http://localhost:3000/attendees')
+        api.get('/events'),
+        api.get('/users'),
+        api.get('/attendees')
       ]);
       setEvents(eventsRes.data);
       setUsers(usersRes.data);
@@ -64,9 +64,9 @@ export default function AdminDashboard() {
     setConfirmDialog({ show: false }); 
     try {
       const payload = getCleanPayload(event, 'Published');
-      await axios.put(`http://localhost:3000/events/${event.id}`, payload);
+      await api.put(`/events/${event.id}`, payload);
       
-      await axios.post('http://localhost:3000/notifications', {
+      await api.post('/notifications', {
         userId: event.organizerId,
         title: 'Event Approved! 🎉',
         message: `Great news! Your event "${event.title}" has been approved by the Admin and is now live.`,
@@ -84,9 +84,9 @@ export default function AdminDashboard() {
     setConfirmDialog({ show: false });
     try {
       const payload = getCleanPayload(event, 'Rejected');
-      await axios.put(`http://localhost:3000/events/${event.id}`, payload);
+      await api.put(`/events/${event.id}`, payload);
       
-      await axios.post('http://localhost:3000/notifications', {
+      await api.post('/notifications', {
         userId: event.organizerId,
         title: 'Event Update Required ⚠️',
         message: `Unfortunately, your event "${event.title}" was not approved. Please review our platform guidelines and edit your event details.`,
@@ -103,7 +103,7 @@ export default function AdminDashboard() {
   const executeArchive = async (eventId, title, isCurrentlyArchived) => {
     setConfirmDialog({ show: false });
     try {
-      await axios.delete(`http://localhost:3000/events/${eventId}`);
+      await api.delete(`/events/${eventId}`);
       setEvents(events.map(event => 
         event.id === eventId ? { ...event, isArchived: !isCurrentlyArchived } : event
       ));

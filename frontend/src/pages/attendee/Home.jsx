@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
+import { api } from '../../lib/api';
 import { Calendar, MapPin, Search, Ticket, CheckCircle2, Sparkles, Flame, ArrowRight } from 'lucide-react';
 
 export default function Home() {
@@ -20,8 +20,8 @@ export default function Home() {
       try {
         setLoading(true);
         const [eventsRes, attendeesRes] = await Promise.all([
-          axios.get('http://localhost:3000/events'),
-          axios.get('http://localhost:3000/attendees')
+          api.get('/events'),
+          api.get('/attendees')
         ]);
         
         setEvents(eventsRes.data);

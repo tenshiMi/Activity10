@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { api } from '../lib/api';
 import { X, User, Mail, Ticket, Lock, ShieldCheck, CreditCard, Loader2 } from 'lucide-react';
 
 // 🌟 FIX: Added organizerId to the props so we know who to notify!
@@ -32,7 +32,7 @@ export default function RegistrationModal({ isOpen, onClose, eventTitle, eventId
     setPaymentStep('processing');
 
     try {
-      const checkResponse = await axios.get(`http://localhost:3000/attendees/check-registration?email=${formData.email}&eventId=${eventId}`);
+      const checkResponse = await api.get(`/attendees/check-registration?email=${formData.email}&eventId=${eventId}`);
       
       if (checkResponse.data.isRegistered) {
         setPaymentStep('idle');
@@ -46,7 +46,7 @@ export default function RegistrationModal({ isOpen, onClose, eventTitle, eventId
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       // 1. Register the attendee
-      await axios.post('http://localhost:3000/attendees', {
+      await api.post('/attendees', {
         ...formData,
         eventId: eventId.toString(),
         amountPaid: eventPrice || '0' 
@@ -54,7 +54,7 @@ export default function RegistrationModal({ isOpen, onClose, eventTitle, eventId
 
       // 🌟 2. NEW: Fire the Notification to the Organizer!
       if (organizerId) {
-        await axios.post('http://localhost:3000/notifications', {
+        await api.post('/notifications', {
             userId: organizerId,
             title: 'New Ticket Sold! 🎟️',
             message: `${formData.name} just registered for "${eventTitle}".`,

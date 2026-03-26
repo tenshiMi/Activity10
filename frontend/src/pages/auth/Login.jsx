@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import axios from 'axios';
+import { api, apiUrl } from '../../lib/api';
 import { Mail, Lock, LogIn, AlertCircle, KeyRound } from 'lucide-react';
 
 export default function Login() {
@@ -66,7 +66,7 @@ export default function Login() {
     setErrorMessage(''); 
 
     try {
-      const response = await axios.post('http://localhost:3000/auth/login', formData);
+      const response = await api.post('/auth/login', formData);
       const { access_token, user } = response.data;
 
       localStorage.setItem('token', access_token);
@@ -79,7 +79,7 @@ export default function Login() {
     } catch (error) {
       if (error.response?.data?.message === 'INACTIVE_ACCOUNT') {
         try {
-          await axios.post('http://localhost:3000/auth/reactivate/send', { email: formData.email });
+          await api.post('/auth/reactivate/send', { email: formData.email });
           setReactivateModal({ show: true, email: formData.email, otp: '', loading: false });
         } catch (mailError) {
           setErrorMessage("Account is inactive, but we failed to send the verification email.");
@@ -98,7 +98,7 @@ export default function Login() {
     setErrorMessage('');
 
     try {
-      const response = await axios.post('http://localhost:3000/auth/reactivate/verify', {
+      const response = await api.post('/auth/reactivate/verify', {
         email: reactivateModal.email,
         otp: reactivateModal.otp
       });
@@ -121,7 +121,7 @@ export default function Login() {
 
   const handleSocialLogin = (provider) => {
     if (provider === 'google') {
-      window.location.href = 'http://localhost:3000/auth/google';
+      window.location.href = apiUrl('/auth/google');
     } else {
       alert(`${provider} login clicked! You need API keys to activate this.`);
     }

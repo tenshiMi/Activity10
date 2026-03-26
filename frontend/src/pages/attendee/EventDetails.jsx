@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
+import { api } from '../../lib/api';
 import { ArrowLeft, Share2, Calendar, Clock, MapPin, BellRing, CheckCircle2, Ticket, Map as MapIcon } from 'lucide-react';
 import RegistrationModal from '../../components/RegistrationModal'; 
 
@@ -18,12 +18,12 @@ export default function EventDetails() {
   useEffect(() => {
     const fetchEventDetails = async () => {
       try {
-        const response = await axios.get(`http://localhost:3000/events/${id}`);
+        const response = await api.get(`/events/${id}`);
         setEvent(response.data);
 
         if (isLoggedIn && user?.email) {
           // 🌟 FIX: We fetch the attendees and explicitly make sure the ticket is NOT Cancelled!
-          const attendeesRes = await axios.get('http://localhost:3000/attendees');
+          const attendeesRes = await api.get('/attendees');
           const hasActiveTicket = attendeesRes.data.some(
             a => a.email === user.email && String(a.eventId) === String(id) && a.status !== 'Cancelled'
           );

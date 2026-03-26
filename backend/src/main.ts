@@ -2,15 +2,18 @@ import * as dotenv from 'dotenv';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { json, urlencoded } from 'express'; // 🌟 NEW: Import these from express
+import { json, urlencoded } from 'express';
+import { existsSync } from 'fs';
+import { join } from 'path';
 
 dotenv.config();
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.enableCors();
 
-  // 🌟 NEW: Increase the JSON payload limit to 50mb so profile pictures don't crash
+  app.enableCors({ origin: true, credentials: true });
+
+  // Increase the JSON payload limit to 50mb so profile pictures don't crash
   app.use(json({ limit: '50mb' }));
   app.use(urlencoded({ extended: true, limit: '50mb' }));
 
@@ -28,6 +31,25 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
 
+  // SPA fallback for React Router (only if a built frontend exists)
+  const frontendDistPath = join(__dirname, '..', '..', 'frontend', 'dist');
+  const frontendIndexPath = join(frontendDistPath, 'index.html');
+  if (existsSync(frontendIndexPath)) {
+    app.use((req, res, next) => {
+      if (req.method !== 'GET') return next();
+      if (req.path.startsWith('/api')) return next();
+      if (req.path.startsWith('/auth')) return next();
+      if (req.path.startsWith('/events')) return next();
+      if (req.path.startsWith('/attendees')) return next();
+      if (req.path.startsWith('/users')) return next();
+      if (req.path.startsWith('/notifications')) return next();
+      if (req.path.includes('.')) return next();
+      return res.sendFile(frontendIndexPath);
+    });
+  }
+
   await app.listen(process.env.PORT ?? 3000);
 }
+
 bootstrap();
+

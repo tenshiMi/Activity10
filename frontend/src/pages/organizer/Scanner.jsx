@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Scanner } from '@yudiel/react-qr-scanner';
-import axios from 'axios';
+import { api } from '../../lib/api';
 import { ArrowLeft, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -32,7 +32,7 @@ export default function ScannerPage() {
     setScanStatus('processing'); 
 
     try {
-      const response = await axios.post('http://localhost:3000/attendees/scan', {
+      const response = await api.post('/attendees/scan', {
         ticketId: code
       });
 

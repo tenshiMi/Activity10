@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { api } from '../../lib/api';
 import { 
   Search, Mail, CheckCircle2, Download, 
   Users, UserCheck, DollarSign, Calendar, XCircle, Filter, MoreVertical, Ban, RefreshCcw
@@ -34,12 +34,12 @@ export default function Attendees() {
         const isAdmin = user?.role === 'Admin';
         
         const eventEndpoint = isAdmin 
-          ? 'http://localhost:3000/events' 
-          : `http://localhost:3000/events/organizer/${user.id}`;
+          ? '/events' 
+          : `/events/organizer/${user.id}`;
 
         const [eventsRes, attendeesRes] = await Promise.all([
-          axios.get(eventEndpoint),
-          axios.get('http://localhost:3000/attendees')
+          api.get(eventEndpoint),
+          api.get('/attendees')
         ]);
 
         setEvents(eventsRes.data);
@@ -85,7 +85,7 @@ export default function Attendees() {
   // Actions
   const handleManualCheckIn = async (ticketId) => {
     try {
-      await axios.post('http://localhost:3000/attendees/scan', { ticketId });
+      await api.post('/attendees/scan', { ticketId });
       
       setAttendees(prev => prev.map(a => 
         a.ticketId === ticketId ? { ...a, status: 'Checked In' } : a

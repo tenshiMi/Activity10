@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { api } from '../../lib/api';
 import { 
     Calendar, MapPin, PhilippinePeso, Type, AlignLeft, Tag, 
     Image as ImageIcon, Users, Ticket, Megaphone, Loader2, CheckCircle2, AlertCircle, Clock
@@ -40,7 +40,7 @@ export default function CreateEvent() {
 
     useEffect(() => {
         if (user.role === 'Admin') {
-            axios.get('http://localhost:3000/users')
+            api.get('/users')
                 .then(response => {
                     const activeOrganizers = response.data.filter(u => u.role === 'Organizer' && u.isActive);
                     setOrganizers(activeOrganizers);
@@ -76,10 +76,10 @@ export default function CreateEvent() {
 
         try {
             if (eventToEdit?.id) {
-                await axios.put(`http://localhost:3000/events/${eventToEdit.id}`, payload);
+                await api.put(`/events/${eventToEdit.id}`, payload);
                 setModal({ show: true, type: 'success', title: 'Success!', message: 'Event updated successfully.' });
             } else {
-                await axios.post('http://localhost:3000/events', payload);
+                await api.post('/events', payload);
                 setModal({ show: true, type: 'success', title: 'Published!', message: 'The event is now live on the platform.' });
             }
         } catch (error) {

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, KeyRound, Lock, AlertCircle, ArrowLeft, CheckCircle, XCircle } from 'lucide-react';
-import axios from 'axios';
+import { api } from '../../lib/api';
 
 export default function ForgotPassword() {
   const navigate = useNavigate();
@@ -29,7 +29,7 @@ export default function ForgotPassword() {
     setErrorMessage('');
     
     try {
-      await axios.post('http://localhost:3000/auth/forgot-password', { email });
+      await api.post('/auth/forgot-password', { email });
       setStep(2);
     } catch (error) {
       setErrorMessage(error.response?.data?.message || "Failed to send OTP. Please check your email.");
@@ -44,7 +44,7 @@ export default function ForgotPassword() {
     setErrorMessage('');
 
     try {
-      await axios.post('http://localhost:3000/auth/verify-otp', { email, otp });
+      await api.post('/auth/verify-otp', { email, otp });
       setStep(3);
     } catch (error) {
       setErrorMessage(error.response?.data?.message || "Invalid OTP. Please try again.");
@@ -73,7 +73,7 @@ export default function ForgotPassword() {
     }
 
     try {
-      await axios.post('http://localhost:3000/auth/reset-password', { 
+      await api.post('/auth/reset-password', { 
         email, 
         otp, 
         newPassword: passwords.newPassword 

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { api } from '../../lib/api';
 import { 
     Calendar, MapPin, PhilippinePeso, Type, AlignLeft, Tag, 
     BellRing, Image as ImageIcon, Ticket, Clock, CheckCircle2, AlertCircle, Loader2, Users 
@@ -62,19 +62,19 @@ export default function CreateEvent() {
 
         try {
             if (eventToEdit?.id) {
-                await axios.put(`http://localhost:3000/events/${eventToEdit.id}`, payload);
+                await api.put(`/events/${eventToEdit.id}`, payload);
                 setModal({ show: true, type: 'success', title: 'Success!', message: 'Event updated successfully.' });
             } else {
-                await axios.post('http://localhost:3000/events', payload);
+                await api.post('/events', payload);
                 
                 // ---------------------------------------------------------
                 // 🌟 NEW: Fetch users to find the Admin, and ring their bell!
                 // ---------------------------------------------------------
                 try {
-                    const usersRes = await axios.get('http://localhost:3000/users');
+                    const usersRes = await api.get('/users');
                     const admin = usersRes.data.find(u => u.role === 'Admin');
                     if (admin) {
-                        await axios.post('http://localhost:3000/notifications', {
+                        await api.post('/notifications', {
                             userId: admin.id, // Notify the Admin
                             title: 'New Event Proposal 📋',
                             message: `${user.name || 'An Organizer'} submitted "${payload.title}" for approval.`,

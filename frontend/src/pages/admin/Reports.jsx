@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { api } from '../../lib/api';
 import { 
   DollarSign, Users, Calendar as CalendarIcon, 
   UserCheck, UserX, Activity, Trophy, Ticket, Award, Filter, Tag
@@ -22,9 +22,9 @@ export default function Reports() {
     const fetchDashboardData = async () => {
       try {
         const [eventsRes, usersRes, attendeesRes] = await Promise.all([
-          axios.get('http://localhost:3000/events'),
-          axios.get('http://localhost:3000/users'),
-          axios.get('http://localhost:3000/attendees') 
+          api.get('/events'),
+          api.get('/users'),
+          api.get('/attendees') 
         ]);
         setEvents(eventsRes.data);
         setUsers(usersRes.data);

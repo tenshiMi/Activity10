@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
+import { api } from '../../lib/api';
 import { Ticket, Calendar, MapPin, Trash2, AlertCircle, XCircle, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 
@@ -37,8 +37,8 @@ export default function MyTickets() {
     const fetchData = async () => {
       try {
         const [attendeeRes, eventRes] = await Promise.all([
-          axios.get('http://localhost:3000/attendees'),
-          axios.get('http://localhost:3000/events')
+          api.get('/attendees'),
+          api.get('/events')
         ]);
 
         if (isLoggedIn && user?.email) {
@@ -85,11 +85,11 @@ export default function MyTickets() {
   const handleCancel = async () => {
     try {
       // 🌟 FIX 1: Changed back to DELETE so your backend accepts it and allows re-purchasing!
-      await axios.delete(`http://localhost:3000/attendees/${cancelModal.attendeeId}`);
+      await api.delete(`/attendees/${cancelModal.attendeeId}`);
 
       // 🌟 FIX 2: Still send the notification to the Organizer!
       if (cancelModal.organizerId) {
-        await axios.post('http://localhost:3000/notifications', {
+        await api.post('/notifications', {
           userId: cancelModal.organizerId,
           title: 'Ticket Cancelled ⚠️',
           message: `${user.name || 'An attendee'} cancelled their ticket for "${cancelModal.eventTitle}".`,

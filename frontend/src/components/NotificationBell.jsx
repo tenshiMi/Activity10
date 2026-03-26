@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
+import { api } from '../lib/api';
 import { Bell, CheckCircle, AlertCircle, Info, Check, Trash2 } from 'lucide-react';
 
 export default function NotificationBell() {
@@ -23,7 +23,7 @@ export default function NotificationBell() {
     const fetchNotifications = async () => {
         if (!user?.id) return;
         try {
-            const res = await axios.get(`http://localhost:3000/notifications/user/${user.id}`);
+            const res = await api.get(`/notifications/user/${user.id}`);
             setNotifications(res.data);
         } catch (error) {
             console.error("Error fetching notifications:", error);
@@ -50,7 +50,7 @@ export default function NotificationBell() {
 
     const markAsRead = async (id) => {
         try {
-            await axios.patch(`http://localhost:3000/notifications/${id}/read`);
+            await api.patch(`/notifications/${id}/read`);
             setNotifications(notifications.map(n => n.id === id ? { ...n, isRead: true } : n));
         } catch (error) {
             console.error("Error marking as read:", error);

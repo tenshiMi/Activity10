@@ -81,9 +81,13 @@ export class AuthController {
     // Generate your standard JWT token using the exact same method as normal login
     const tokenData = await this.authService.login(req.user);
 
-    // Redirect the user back to your React frontend, passing the token in the URL
-    // (Make sure your React app is running on port 5173!)
-    return res.redirect(`http://localhost:5173/login?token=${tokenData.access_token}&user=${encodeURIComponent(JSON.stringify(tokenData.user))}`);
+    const configuredFrontendUrl = (process.env.FRONTEND_URL ?? '').replace(/\/$/, '');
+    const inferredFrontendUrl = `${req.protocol}://${req.get('host')}`;
+    const frontendUrl = configuredFrontendUrl || inferredFrontendUrl;
+
+    return res.redirect(
+      `${frontendUrl}/login?token=${tokenData.access_token}&user=${encodeURIComponent(JSON.stringify(tokenData.user))}`,
+    );
   }
 
   // ==========================================

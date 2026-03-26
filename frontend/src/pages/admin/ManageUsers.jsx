@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { api } from '../../lib/api';
 import { 
   Trash2, Edit3, UserPlus, Shield, User, X, 
   Search, Filter, CheckCircle2, AlertTriangle, Calendar 
@@ -24,7 +24,7 @@ export default function ManageUsers() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('http://localhost:3000/users'); 
+      const response = await api.get('/users'); 
       setUsers(response.data);
       setLoading(false);
     } catch (error) {
@@ -42,7 +42,7 @@ export default function ManageUsers() {
   const handleAddUserSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('http://localhost:3000/users/admin', newUser);
+      await api.post('/users/admin', newUser);
       setAddUserModal(false);
       setNewUser({ name: '', email: '', password: '', role: 'Organizer' }); 
       fetchUsers(); 
@@ -61,7 +61,7 @@ export default function ManageUsers() {
       if (editModal.user.password && editModal.user.password.trim() !== '') {
         payload.password = editModal.user.password;
       }
-      await axios.put(`http://localhost:3000/users/${editModal.user.id}`, payload);
+      await api.put(`/users/${editModal.user.id}`, payload);
       
       fetchUsers(); 
       setEditModal({ show: false, user: null });
@@ -77,12 +77,12 @@ export default function ManageUsers() {
     setConfirmArchive({ ...confirmArchive, show: false }); 
     try {
       if (confirmArchive.isBulk) {
-        await Promise.all(selectedUsers.map(id => axios.patch(`http://localhost:3000/auth/users/${id}/archive`)));
+        await Promise.all(selectedUsers.map(id => api.patch(`/auth/users/${id}/archive`)));
         setUsers(users.map(u => selectedUsers.includes(u.id) ? { ...u, isArchived: true } : u));
         setSelectedUsers([]);
         setModal({ show: true, type: 'success', title: 'Bulk Archive', message: `${selectedUsers.length} users have been archived.` });
       } else {
-        await axios.patch(`http://localhost:3000/auth/users/${confirmArchive.userId}/archive`); 
+        await api.patch(`/auth/users/${confirmArchive.userId}/archive`); 
         setUsers(users.map(u => u.id === confirmArchive.userId ? { ...u, isArchived: true } : u));
         setModal({ show: true, type: 'success', title: 'Archived', message: `${confirmArchive.userName} has been archived.` });
       }

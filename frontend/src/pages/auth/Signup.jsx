@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { api } from '../../lib/api';
 import { Mail, Lock, User, ShieldCheck, AlertCircle, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 
 export default function Signup() {
@@ -70,7 +70,7 @@ export default function Signup() {
         role: formData.role
       };
       
-      await axios.post('http://localhost:3000/users', payload);
+      await api.post('/users', payload);
       setStep(2); 
 
     } catch (error) {
@@ -87,7 +87,7 @@ export default function Signup() {
     setErrorMessage('');
 
     try {
-      await axios.post('http://localhost:3000/users/verify', { 
+      await api.post('/users/verify', { 
         email: formData.email, 
         code: verificationCode 
       });

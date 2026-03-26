@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { api } from '../../lib/api';
 import { 
     Plus, Calendar, MapPin, Settings, Archive, Ticket, 
     Image as ImageIcon, TrendingUp, CheckCircle,
@@ -28,13 +28,13 @@ export default function OrganizerDashboard() {
         try {
             setLoading(true);
             const endpoint = isAdmin 
-                ? 'http://localhost:3000/events' 
-                : `http://localhost:3000/events/organizer/${user.id}`; 
+                ? '/events' 
+                : `/events/organizer/${user.id}`; 
                 
             // 🌟 FIX: Fetch attendees alongside events so we can view them in the modal
             const [eventsRes, attendeesRes] = await Promise.all([
-                axios.get(endpoint),
-                axios.get('http://localhost:3000/attendees')
+                api.get(endpoint),
+                api.get('/attendees')
             ]);
 
             setEvents(eventsRes.data);
@@ -95,7 +95,7 @@ export default function OrganizerDashboard() {
 
         if (window.confirm(`Are you sure you want to ${actionText} this event?`)) {
             try {
-                await axios.delete(`http://localhost:3000/events/${event.id}`);
+                await api.delete(`/events/${event.id}`);
                 setEvents(events.map(e => e.id === event.id ? { ...e, isArchived: !event.isArchived } : e));
             } catch (error) {
                 setModal({ show: true, type: 'error', title: 'Action Failed', message: `Failed to ${actionText} event.` });

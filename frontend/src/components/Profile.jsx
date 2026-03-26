@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import { api } from '../lib/api';
 import { Link } from 'react-router-dom'; // 🌟 NEW: Import Link
 import { User, Mail, Lock, Camera, CheckCircle2, AlertCircle, Save, AtSign, ShieldCheck, Eye, EyeOff, Loader2, KeyRound, X, ArrowLeft } from 'lucide-react'; // 🌟 NEW: Added ArrowLeft
 
@@ -116,7 +116,7 @@ export default function Profile() {
         payload.newPassword = formData.newPassword;
       }
 
-      await axios.put(`http://localhost:3000/users/${user.id}`, payload);
+      await api.put(`/users/${user.id}`, payload);
       
       const updatedUser = { ...user, ...payload };
       delete updatedUser.currentPassword; 
