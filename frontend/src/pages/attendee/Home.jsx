@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../lib/api';
 import { Calendar, MapPin, Search, Ticket, CheckCircle2, Sparkles, Flame, ArrowRight } from 'lucide-react';
+import PageLoader from '../../components/PageLoader'; // 🌟 IMPORT YOUR LOADER
 
 export default function Home() {
   const [events, setEvents] = useState([]);
-  const [allAttendees, setAllAttendees] = useState([]); // 🌟 NEW: Fetch all attendees to calculate capacity
+  const [allAttendees, setAllAttendees] = useState([]); 
   const [myRegistrations, setMyRegistrations] = useState([]); 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All'); 
@@ -15,7 +16,15 @@ export default function Home() {
   const token = localStorage.getItem('token');
   const isLoggedIn = !!(user && token);
 
+  // 🌟 NEW: Check if they have already seen the Welcome loader this session
+  const [isFirstLogin] = useState(() => !sessionStorage.getItem('hasSeenWelcome'));
+
   useEffect(() => {
+    // If it is their first time, mark it as seen so it doesn't play again if they return to Home!
+    if (isFirstLogin) {
+      sessionStorage.setItem('hasSeenWelcome', 'true');
+    }
+
     const fetchHomeData = async () => {
       try {
         setLoading(true);
@@ -38,7 +47,7 @@ export default function Home() {
       }
     };
     fetchHomeData();
-  }, [isLoggedIn, user?.email]);
+  }, [isLoggedIn, user?.email, isFirstLogin]);
 
   const categories = ['All', ...new Set(events.filter(e => !e.isArchived && e.status === 'Published').map(e => e.category).filter(Boolean))];
 
@@ -49,7 +58,6 @@ export default function Home() {
     return matchesSearch && matchesCategory;
   });
 
-  // 🌟 NEW: Separate the user's upcoming events for the quick-access section
   const myUpcomingEvents = filteredEvents.filter(event => myRegistrations.includes(String(event.id)));
 
   const getCategoryStyle = (category) => {
@@ -78,7 +86,8 @@ export default function Home() {
     } catch { return `${dateStr} • ${timeStr}`; }
   };
 
-  return (
+  // 🌟 We wrap all your normal UI in a variable so we can easily decide whether to show the Loader or not
+  const pageContent = (
     <div className="min-h-screen bg-slate-50/50 font-sans pb-20">
       
       {/* HERO SECTION */}
@@ -112,7 +121,7 @@ export default function Home() {
 
       <div className="max-w-[1400px] mx-auto px-6">
         
-        {/* 🌟 NEW: UP NEXT SECTION (Quick Access) */}
+        {/* UP NEXT SECTION */}
         {isLoggedIn && myUpcomingEvents.length > 0 && searchTerm === '' && selectedCategory === 'All' && (
           <div className="mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -170,6 +179,7 @@ export default function Home() {
           </div>
         )}
 
+        {/* 🌟 RESTORED THE INLINE SPINNER for returning visitors! */}
         {loading ? (
           <div className="flex justify-center items-center py-20">
             <div className="animate-pulse flex flex-col items-center gap-4">
@@ -181,7 +191,6 @@ export default function Home() {
             {filteredEvents.map((event) => {
               const isGoing = myRegistrations.includes(String(event.id)); 
               
-              // 🌟 NEW: CALCULATE TICKETS SOLD AND CAPACITY
               const soldCount = allAttendees.filter(a => String(a.eventId) === String(event.id) && a.status !== 'Cancelled').length;
               const capacity = Number(event.capacity) || 0;
               const percentSold = capacity > 0 ? Math.min(100, Math.round((soldCount / capacity) * 100)) : 0;
@@ -228,7 +237,6 @@ export default function Home() {
                       </div>
                     </div>
 
-                    {/* 🌟 NEW: TICKETS SOLD PROGRESS BAR */}
                     <div className="mb-6 bg-slate-50 p-4 rounded-2xl border border-slate-100">
                       <div className="flex justify-between items-end mb-2">
                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Registration</span>
@@ -240,9 +248,9 @@ export default function Home() {
                          </div>
                       )}
                       {isSellingFast && (
-                          <p className="text-[10px] font-black text-rose-600 mt-2 flex items-center gap-1 uppercase tracking-wider animate-pulse">
-                            <Flame size={14} /> Only {capacity - soldCount} spots left!
-                          </p>
+                         <p className="text-[10px] font-black text-rose-600 mt-2 flex items-center gap-1 uppercase tracking-wider animate-pulse">
+                           <Flame size={14} /> Only {capacity - soldCount} spots left!
+                         </p>
                       )}
                     </div>
 
@@ -291,4 +299,17 @@ export default function Home() {
       </div>
     </div>
   );
+
+  // 🌟 THE FINAL LOGIC: 
+  // If it's the first time they log in today, wrap the content in the 3D loader!
+  if (isFirstLogin) {
+    return (
+      <PageLoader message={user?.name ? `Welcome back, ${user.name.split(' ')[0]}...` : "Preparing your dashboard..."}>
+        {pageContent}
+      </PageLoader>
+    );
+  }
+
+  // If they have been here already, skip the full-screen loader and just show the content normally
+  return pageContent;
 }

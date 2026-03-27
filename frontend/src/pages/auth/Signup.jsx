@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api';
 import { Mail, Lock, User, ShieldCheck, AlertCircle, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import HarmonyLogo from '../../components/HarmonyLogo'; 
 
 export default function Signup() {
   const navigate = useNavigate();
@@ -105,6 +106,22 @@ export default function Signup() {
   return (
     <div className="flex h-screen w-full overflow-hidden bg-gray-900">
       
+      {/* 🌟 UPGRADED 2-SIDED 3D CARD FLIP CSS */}
+      <style>{`
+        @keyframes card-flip {
+          0%, 25% { transform: rotateY(0deg); }
+          45%, 75% { transform: rotateY(180deg); }
+          95%, 100% { transform: rotateY(360deg); }
+        }
+        .perspective-1000 { perspective: 1000px; }
+        .preserve-3d { transform-style: preserve-3d; }
+        .backface-hidden { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+        .rotate-y-180 { transform: rotateY(180deg); }
+        .animate-card-flip {
+          animation: card-flip 6s cubic-bezier(0.4, 0.0, 0.2, 1) infinite;
+        }
+      `}</style>
+      
       <div className="relative hidden lg:block lg:w-[55%] h-full bg-black z-0">
         {images.map((img, index) => (
           <img
@@ -144,9 +161,24 @@ export default function Signup() {
         <div className="flex-1 w-full max-w-md mx-auto py-12 px-8 sm:px-4 flex flex-col justify-center">
           
           <div className="text-center mb-10">
-            <div className="w-16 h-16 bg-white border border-gray-100 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm">
-              {step === 1 ? <User size={32} strokeWidth={2.5} /> : <ShieldCheck size={32} strokeWidth={2.5} />}
+            
+            {/* 🌟 NEW: TRUE 2-SIDED FLIPPING LOGO CARD */}
+            <div className="w-20 h-20 mx-auto mb-6 perspective-1000">
+              <div className="relative w-full h-full animate-card-flip preserve-3d">
+                
+                {/* FRONT FACE: New Harmony Logo */}
+                <div className="absolute inset-0 w-full h-full backface-hidden bg-white border border-gray-100 rounded-2xl flex items-center justify-center shadow-xl shadow-indigo-500/10">
+                  <HarmonyLogo className="w-12 h-12" />
+                </div>
+                
+                {/* BACK FACE: User or Shield Icon based on Step! */}
+                <div className="absolute inset-0 w-full h-full backface-hidden bg-white border border-gray-100 rounded-2xl flex items-center justify-center shadow-xl shadow-indigo-500/10 rotate-y-180 text-indigo-600">
+                  {step === 1 ? <User size={36} strokeWidth={2.5} /> : <ShieldCheck size={36} strokeWidth={2.5} />}
+                </div>
+
+              </div>
             </div>
+
             <h2 className="text-3xl font-extrabold text-gray-900 mb-2 tracking-tight">
               {step === 1 ? 'Create Account' : 'Verify your email'}
             </h2>
@@ -174,8 +206,8 @@ export default function Signup() {
                     </div>
                     <input
                       type="text" name="firstName" required value={formData.firstName} onChange={handleChange}
-                      readOnly // 🌟 STARTS READ-ONLY
-                      onFocus={(e) => e.target.removeAttribute('readonly')} // 🌟 UNLOCKS
+                      readOnly 
+                      onFocus={(e) => e.target.removeAttribute('readonly')} 
                       autoComplete="off"
                       className="block w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all text-gray-900 font-medium bg-white shadow-sm"
                       placeholder="John"
@@ -186,8 +218,8 @@ export default function Signup() {
                   <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Last Name</label>
                   <input
                     type="text" name="lastName" required value={formData.lastName} onChange={handleChange}
-                    readOnly // 🌟 STARTS READ-ONLY
-                    onFocus={(e) => e.target.removeAttribute('readonly')} // 🌟 UNLOCKS
+                    readOnly 
+                    onFocus={(e) => e.target.removeAttribute('readonly')} 
                     autoComplete="off"
                     className="block w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all text-gray-900 font-medium bg-white shadow-sm"
                     placeholder="Doe"
@@ -203,8 +235,8 @@ export default function Signup() {
                   </div>
                   <input
                     type="email" name="email" required value={formData.email} onChange={handleChange}
-                    readOnly // 🌟 STARTS READ-ONLY
-                    onFocus={(e) => e.target.removeAttribute('readonly')} // 🌟 UNLOCKS
+                    readOnly 
+                    onFocus={(e) => e.target.removeAttribute('readonly')} 
                     autoComplete="off"
                     className="block w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all text-gray-900 font-medium bg-white shadow-sm"
                     placeholder="john@example.com"
@@ -220,8 +252,8 @@ export default function Signup() {
                   </div>
                   <input
                     type="password" name="password" required value={formData.password} onChange={handleChange}
-                    readOnly // 🌟 STARTS READ-ONLY
-                    onFocus={(e) => e.target.removeAttribute('readonly')} // 🌟 UNLOCKS
+                    readOnly 
+                    onFocus={(e) => e.target.removeAttribute('readonly')} 
                     autoComplete="off"
                     className="block w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all text-gray-900 font-medium bg-white shadow-sm"
                     placeholder="••••••••"
@@ -256,8 +288,8 @@ export default function Signup() {
                   </div>
                   <input
                     type="password" name="confirmPassword" required value={formData.confirmPassword} onChange={handleChange}
-                    readOnly // 🌟 STARTS READ-ONLY
-                    onFocus={(e) => e.target.removeAttribute('readonly')} // 🌟 UNLOCKS
+                    readOnly 
+                    onFocus={(e) => e.target.removeAttribute('readonly')} 
                     autoComplete="off"
                     className={`block w-full pl-11 pr-4 py-3 border rounded-xl focus:ring-2 focus:border-transparent outline-none transition-all text-gray-900 font-medium bg-white shadow-sm ${
                       formData.confirmPassword && formData.password !== formData.confirmPassword 

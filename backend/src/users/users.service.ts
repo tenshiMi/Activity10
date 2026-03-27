@@ -14,8 +14,8 @@ export class UsersService {
   private transporter = nodemailer.createTransport({
     service: 'gmail', 
     auth: {
-      user: 'rojanegacu21@gmail.com', 
-      pass: 'frbi wfve gljn wukw',    
+      user: 'harmony.events9gmail.com', 
+      pass: 'ygzh ucbr haze gvhv',    
     },
   });
 
@@ -48,7 +48,7 @@ export class UsersService {
     });
 
     const mailOptions = {
-      from: 'rojanegacu21@gmail.com', 
+      from: 'harmony.events9gmail.com', 
       to: email,
       subject: 'Verify your Account',
       text: `Welcome! Your verification code is: ${otp}. It will expire in 15 minutes.`,

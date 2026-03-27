@@ -9,8 +9,8 @@ export class AuthService {
   private transporter = nodemailer.createTransport({
     service: 'gmail', 
     auth: {
-      user: 'rojanegacu21@gmail.com', 
-      pass: 'frbi wfve gljn wukw',    
+      user: 'harmony.events9gmail.com', 
+      pass: 'ygzh ucbr haze gvhv',    
     },
   });
 
@@ -86,7 +86,7 @@ export class AuthService {
     } as any);
 
     const mailOptions = {
-      from: 'rojanegacu21@gmail.com',
+      from: 'harmony.events9gmail.com',
       to: email,
       subject: 'Password Reset OTP',
       text: `Your OTP for password reset is: ${otp}. It will expire in 15 minutes.`,
@@ -143,7 +143,7 @@ export class AuthService {
     await this.usersService.update(user.id, { resetOtp: otp, resetOtpExpires: expiresAt } as any);
 
     const mailOptions = {
-      from: 'rojanegacu21@gmail.com',
+      from: 'harmony.events9gmail.com',
       to: email,
       subject: 'Reactivate your Account',
       text: `Your account was archived. Your OTP to reactivate and verify your email is: ${otp}. It will expire in 15 minutes.`,

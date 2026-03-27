@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { api, apiUrl } from '../../lib/api';
-import { Mail, Lock, LogIn, AlertCircle, KeyRound } from 'lucide-react';
+import { Mail, Lock, AlertCircle, KeyRound, LogIn} from 'lucide-react';
+import HarmonyLogo from '../../components/HarmonyLogo'; // 🌟 IMPORT YOUR NEW LOGO
 
 export default function Login() {
   const navigate = useNavigate();
@@ -46,6 +47,8 @@ export default function Login() {
         localStorage.setItem('token', token);
         localStorage.setItem('user', JSON.stringify(user));
 
+        sessionStorage.removeItem('hasSeenWelcome');
+
         if (user.role === 'Admin') navigate('/admin');
         else if (user.role === 'Organizer') navigate('/organizer');
         else navigate('/');
@@ -71,6 +74,8 @@ export default function Login() {
 
       localStorage.setItem('token', access_token);
       localStorage.setItem('user', JSON.stringify(user));
+
+      sessionStorage.removeItem('hasSeenWelcome');
 
       if (user.role === 'Admin') navigate('/admin');
       else if (user.role === 'Organizer') navigate('/organizer');
@@ -130,6 +135,22 @@ export default function Login() {
   return (
     <div className="flex h-screen w-full overflow-hidden bg-gray-900">
       
+      {/* 🌟 UPGRADED 2-SIDED 3D CARD FLIP CSS */}
+      <style>{`
+        @keyframes card-flip {
+          0%, 25% { transform: rotateY(0deg); }
+          45%, 75% { transform: rotateY(180deg); }
+          95%, 100% { transform: rotateY(360deg); }
+        }
+        .perspective-1000 { perspective: 1000px; }
+        .preserve-3d { transform-style: preserve-3d; }
+        .backface-hidden { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+        .rotate-y-180 { transform: rotateY(180deg); }
+        .animate-card-flip {
+          animation: card-flip 6s cubic-bezier(0.4, 0.0, 0.2, 1) infinite;
+        }
+      `}</style>
+
       {/* LEFT SIDE: Fixed Image Slideshow */}
       <div className="relative hidden lg:block lg:w-[55%] h-full bg-black z-0">
         {images.map((img, index) => (
@@ -171,9 +192,23 @@ export default function Login() {
         <div className="flex-1 w-full max-w-md mx-auto py-12 px-8 sm:px-4 flex flex-col justify-center">
           
           <div className="text-center mb-10">
-            <div className="w-16 h-16 bg-white border border-gray-100 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm">
-              <LogIn size={32} strokeWidth={2.5} />
+            {/* 🌟 THE 3D FLIPPING LOGO CARD */}
+            <div className="w-20 h-20 mx-auto mb-6 perspective-1000">
+              <div className="relative w-full h-full animate-card-flip preserve-3d">
+                
+                {/* FRONT FACE: New Harmony Logo */}
+                <div className="absolute inset-0 w-full h-full backface-hidden bg-white border border-gray-100 rounded-2xl flex items-center justify-center shadow-xl shadow-indigo-500/10">
+                  <HarmonyLogo className="w-12 h-12" />
+                </div>
+                
+                {/* BACK FACE: LogIn Icon */}
+                <div className="absolute inset-0 w-full h-full backface-hidden bg-white border border-gray-100 rounded-2xl flex items-center justify-center shadow-xl shadow-indigo-500/10 rotate-y-180 text-indigo-600">
+                  <LogIn size={36} strokeWidth={2.5} />
+                </div>
+
+              </div>
             </div>
+
             <h2 className="text-3xl font-extrabold text-gray-900 mb-2 tracking-tight">Welcome Back</h2>
             <p className="text-gray-500 font-medium">Please login to continue</p>
           </div>
@@ -198,8 +233,8 @@ export default function Login() {
                   required
                   value={formData.email}
                   onChange={handleChange}
-                  readOnly // 🌟 STARTS READ-ONLY TO BLOCK BROWSER
-                  onFocus={(e) => e.target.removeAttribute('readonly')} // 🌟 UNLOCKS WHEN CLICKED
+                  readOnly 
+                  onFocus={(e) => e.target.removeAttribute('readonly')} 
                   autoComplete="off" 
                   className="block w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all text-gray-900 font-medium bg-white shadow-sm"
                   placeholder="john@example.com"
@@ -219,8 +254,8 @@ export default function Login() {
                   required
                   value={formData.password}
                   onChange={handleChange}
-                  readOnly // 🌟 STARTS READ-ONLY TO BLOCK BROWSER
-                  onFocus={(e) => e.target.removeAttribute('readonly')} // 🌟 UNLOCKS WHEN CLICKED
+                  readOnly 
+                  onFocus={(e) => e.target.removeAttribute('readonly')} 
                   autoComplete="off" 
                   className="block w-full pl-11 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all text-gray-900 font-medium bg-white shadow-sm"
                   placeholder="••••••••"
@@ -332,7 +367,6 @@ export default function Login() {
           </div>
         </div>
       )}
-
     </div>
   );
 }

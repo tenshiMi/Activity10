@@ -35,18 +35,8 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       // We create a random temporary password because Google users don't need passwords to log in
       const tempPassword = Math.random().toString(36).slice(-10) + 'A1!'; 
       
-      const payload = {
-        name: fullName,
-        email: email,
-        password: tempPassword, 
-        role: 'Attendee' // Default role
-      };
-      
-      // Use your existing user creation logic
-      await this.usersService.create(payload);
-      
-      // Since your create method currently saves them to memory and waits for an OTP, 
-      // we need to immediately activate them in the real DB because Google already verified their email!
+      // 🌟 FIX: We completely removed the `this.usersService.create(payload)` call here!
+      // We ONLY call activateGoogleUser to save them directly to the DB without OTP memory loops.
       user = await this.usersService.activateGoogleUser(email, fullName, tempPassword);
     }
 

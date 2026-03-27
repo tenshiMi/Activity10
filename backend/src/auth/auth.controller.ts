@@ -85,8 +85,9 @@ export class AuthController {
     const inferredFrontendUrl = `${req.protocol}://${req.get('host')}`;
     const frontendUrl = configuredFrontendUrl || inferredFrontendUrl;
 
+    // 🌟 FIX: Hardcode the frontend URL so it doesn't accidentally redirect to backend port 3000
     return res.redirect(
-      `${frontendUrl}/login?token=${tokenData.access_token}&user=${encodeURIComponent(JSON.stringify(tokenData.user))}`,
+      `http://localhost:5173/login?token=${tokenData.access_token}&user=${encodeURIComponent(JSON.stringify(tokenData.user))}`
     );
   }
 

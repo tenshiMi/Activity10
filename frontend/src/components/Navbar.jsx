@@ -1,7 +1,8 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Calendar, LogOut } from 'lucide-react';
+import { LogOut } from 'lucide-react'; 
 import NotificationBell from './NotificationBell'; 
+import HarmonyLogo from './HarmonyLogo'; 
 
 export default function Navbar() {
   const navigate = useNavigate();
@@ -13,19 +14,47 @@ export default function Navbar() {
     navigate('/login');
   };
 
-  // 🌟 NEW: Get the saved avatar or generate the initials avatar
+  // Get the saved avatar or generate the initials avatar
   const displayAvatar = user?.avatarUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${user?.name || 'User'}&backgroundColor=2563eb`;
 
   return (
     <nav className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-md border-b border-gray-200/80 shadow-sm font-sans">
+      
+      {/* 🌟 INJECTED SLOW 3D FLIP CSS */}
+      <style>{`
+        @keyframes slow-flip {
+          0%, 15% { transform: rotateY(0deg); }
+          45%, 65% { transform: rotateY(180deg); }
+          95%, 100% { transform: rotateY(360deg); }
+        }
+        .perspective-1000 { perspective: 1000px; }
+        .preserve-3d { transform-style: preserve-3d; }
+        .backface-hidden { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+        .rotate-y-180 { transform: rotateY(180deg); }
+        .animate-slow-flip {
+          animation: slow-flip 10s cubic-bezier(0.4, 0.0, 0.2, 1) infinite;
+        }
+      `}</style>
+
       <div className="max-w-[1600px] mx-auto px-6">
         <div className="flex justify-between items-center h-20">
           
-          {/* Left Side: Premium Logo */}
-          <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-11 h-11 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-md shadow-blue-600/20 group-hover:shadow-blue-600/40 transition-all duration-300">
-              <Calendar className="text-white w-6 h-6" strokeWidth={2.5} />
+          {/* 🌟 UPGRADED: Left Side Premium Custom Logo with 3D Flip */}
+          <Link to="/" className="flex items-center gap-3 group perspective-1000">
+            <div className="w-11 h-11 relative animate-slow-flip preserve-3d group-hover:scale-110 transition-transform duration-300">
+              
+              {/* FRONT FACE */}
+              <div className="absolute inset-0 w-full h-full backface-hidden flex items-center justify-center">
+                <HarmonyLogo className="w-11 h-11 drop-shadow-md" />
+              </div>
+              
+              {/* BACK FACE (Same logo so it looks like a solid, 2-sided coin!) */}
+              <div className="absolute inset-0 w-full h-full backface-hidden flex items-center justify-center rotate-y-180">
+                <HarmonyLogo className="w-11 h-11 drop-shadow-md" />
+              </div>
+
             </div>
+            
             <div className="hidden sm:block leading-tight">
               <span className="block font-extrabold text-xl text-gray-900 tracking-tight">Harmony Events</span>
               <span className="block text-[10px] text-gray-500 font-bold tracking-widest mt-0.5">PLATFORM</span>
@@ -43,7 +72,7 @@ export default function Navbar() {
 
                 <div className="h-8 w-px bg-gray-200 mx-1 hidden sm:block"></div>
 
-                {/* 🌟 UPGRADED: Profile Pill with Dynamic Picture */}
+                {/* Profile Pill with Dynamic Picture */}
                 <Link 
                   to="/profile" 
                   className="hidden sm:flex items-center gap-3 bg-white border border-gray-200 hover:border-blue-200 hover:bg-blue-50 transition-all py-1.5 pl-1.5 pr-5 rounded-full shadow-sm cursor-pointer active:scale-95 group"
