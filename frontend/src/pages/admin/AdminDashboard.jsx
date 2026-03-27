@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api';
 import { 
   Plus, Archive, Settings, Calendar, MapPin, Ticket, 
-  Search, Filter, Shield, User, LayoutGrid, List, Eye, X,
+  Search, Filter, Shield, User, Users, LayoutGrid, List, Eye, X,
   Clock, CheckCircle, XCircle, AlertTriangle, HelpCircle
 } from 'lucide-react';
 
@@ -134,20 +134,35 @@ export default function AdminDashboard() {
     return org ? org.name : 'Unknown Organizer';
   };
 
+  const normalizeStatus = (status) => String(status || '').trim().toLowerCase();
+  const isPublishedEvent = (event) => !event?.isArchived && normalizeStatus(event?.status) === 'published';
+  const isPendingEvent = (event) => !event?.isArchived && normalizeStatus(event?.status) === 'pending';
+  const isRejectedEvent = (event) => normalizeStatus(event?.status) === 'rejected';
+
   const filteredEvents = events.filter(event => {
     const matchesSearch = event.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           event.location.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = categoryFilter === 'All' || event.category?.includes(categoryFilter);
     const matchesStatus = statusFilter === 'All' || 
-                          (statusFilter === 'Active' && !event.isArchived && event.status === 'Published') || 
-                          (statusFilter === 'Pending' && event.status === 'Pending') ||
-                          (statusFilter === 'Rejected' && event.status === 'Rejected') ||
+                          (statusFilter === 'Active' && isPublishedEvent(event)) || 
+                          (statusFilter === 'Pending' && isPendingEvent(event)) ||
+                          (statusFilter === 'Rejected' && isRejectedEvent(event)) ||
                           (statusFilter === 'Archived' && event.isArchived);
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
-  const pendingCount = events.filter(e => e.status === 'Pending' && !e.isArchived).length;
+  const pendingCount = events.filter(e => isPendingEvent(e)).length;
   const currentEventAttendees = allAttendees.filter(a => String(a.eventId) === String(attendeesModal.eventId) && a.status !== 'Cancelled');
+  const closeAttendeesModal = () => setAttendeesModal({ show: false, eventTitle: '', eventId: null });
+
+  const getInitials = (name = '') =>
+    name
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map(part => part[0]?.toUpperCase())
+      .join('') || 'U';
 
   if (loading) return <div className="text-gray-500 animate-pulse text-lg font-medium p-8">Loading platform events...</div>;
 
@@ -236,7 +251,7 @@ export default function AdminDashboard() {
             const cannotArchive = hasTicketsSold && !event.isArchived;
 
             return (
-            <div key={event.id} className={`bg-white rounded-3xl shadow-sm border overflow-hidden flex flex-col transition-all duration-300 group ${event.isArchived || event.status === 'Rejected' ? 'opacity-70 grayscale-[50%] hover:grayscale-0 border-gray-200' : event.status === 'Pending' ? 'border-amber-300 shadow-amber-100 hover:shadow-xl hover:-translate-y-1' : 'border-gray-100 hover:shadow-xl hover:-translate-y-1'}`}>
+            <div key={event.id} className={`bg-white rounded-3xl shadow-sm border overflow-hidden flex flex-col transition-all duration-300 group ${event.isArchived || isRejectedEvent(event) ? 'opacity-70 grayscale-[50%] hover:grayscale-0 border-gray-200' : isPendingEvent(event) ? 'border-amber-300 shadow-amber-100 hover:shadow-xl hover:-translate-y-1' : 'border-gray-100 hover:shadow-xl hover:-translate-y-1'}`}>
               
               <div className="h-48 bg-gray-100 relative overflow-hidden">
                 {event.imageUrl ? (
@@ -248,11 +263,11 @@ export default function AdminDashboard() {
                 <div className="absolute top-4 left-4">
                   <span className={`px-3 py-1.5 text-xs font-extrabold rounded-full shadow-sm backdrop-blur-md text-white tracking-wide ${
                     event.isArchived ? 'bg-gray-900/80' : 
-                    event.status === 'Pending' ? 'bg-amber-500/90' :
-                    event.status === 'Rejected' ? 'bg-red-600/90' :
+                    isPendingEvent(event) ? 'bg-amber-500/90' :
+                    isRejectedEvent(event) ? 'bg-red-600/90' :
                     'bg-emerald-500/90'
                   }`}>
-                    {event.isArchived ? 'ARCHIVED' : event.status?.toUpperCase() || 'PUBLISHED'}
+                    {event.isArchived ? 'ARCHIVED' : String(event.status || 'Pending').toUpperCase()}
                   </span>
                 </div>
               </div>
@@ -292,7 +307,7 @@ export default function AdminDashboard() {
                 </div>
 
                 <div className="mt-auto flex justify-between items-center pt-5 border-t border-gray-100">
-                  {event.status === 'Pending' && !event.isArchived ? (
+                  {isPendingEvent(event) ? (
                     <div className="flex gap-2 w-full">
                       <button onClick={() => confirmReject(event)} className="flex-1 flex items-center justify-center text-sm font-bold bg-red-50 text-red-600 hover:bg-red-100 py-2.5 rounded-xl transition cursor-pointer">
                         <XCircle className="w-4 h-4 mr-1.5" /> Reject
@@ -314,13 +329,24 @@ export default function AdminDashboard() {
                         >
                           <Archive className="w-4 h-4" />
                         </button>
-                        
-                        <button 
-                          onClick={() => setAttendeesModal({ show: true, eventTitle: event.title, eventId: event.id })} 
-                          className="flex items-center justify-center px-4 h-10 text-sm font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 transition rounded-xl cursor-pointer"
-                        >
-                          <Eye className="w-4 h-4 mr-2" /> View
-                        </button>
+
+                        {isPublishedEvent(event) ? (
+                          <button
+                            onClick={() => setAttendeesModal({ show: true, eventTitle: event.title, eventId: event.id })}
+                            className="flex items-center justify-center px-4 h-10 text-sm font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 transition rounded-xl cursor-pointer"
+                            title="View Attendees"
+                          >
+                            <Eye className="w-4 h-4 mr-2" /> View
+                          </button>
+                        ) : (
+                          <button
+                            disabled
+                            className="flex items-center justify-center px-4 h-10 text-sm font-bold text-gray-300 bg-gray-50 rounded-xl cursor-not-allowed"
+                            title="Available when the event is Published"
+                          >
+                            <Eye className="w-4 h-4 mr-2" /> View
+                          </button>
+                        )}
                       </div>
 
                       <button onClick={() => navigate('/admin/create', { state: { eventToEdit: event } })} className="flex items-center justify-center px-4 h-10 text-sm font-bold bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition cursor-pointer shadow-md">
@@ -357,7 +383,7 @@ export default function AdminDashboard() {
                   const cannotArchive = hasTicketsSold && !event.isArchived;
 
                   return (
-                    <tr key={event.id} className={`hover:bg-gray-50/50 transition-colors ${event.isArchived ? 'bg-gray-50/30 grayscale-[30%]' : event.status === 'Pending' ? 'bg-amber-50/20' : ''}`}>
+                    <tr key={event.id} className={`hover:bg-gray-50/50 transition-colors ${event.isArchived ? 'bg-gray-50/30 grayscale-[30%]' : isPendingEvent(event) ? 'bg-amber-50/20' : ''}`}>
                       <td className="p-5">
                         <p className={`font-extrabold text-base line-clamp-1 ${event.isArchived ? 'text-gray-500' : 'text-gray-900'}`}>{event.title}</p>
                         <div className="flex items-center gap-4 text-xs font-medium text-gray-500 mt-1.5">
@@ -383,23 +409,39 @@ export default function AdminDashboard() {
                       <td className="p-5">
                         <span className={`px-3 py-1 text-[11px] font-extrabold uppercase tracking-wider rounded-full ${
                           event.isArchived ? 'bg-gray-200 text-gray-600' : 
-                          event.status === 'Pending' ? 'bg-amber-100 text-amber-700 border border-amber-200 shadow-sm' :
-                          event.status === 'Rejected' ? 'bg-red-100 text-red-700' :
+                          isPendingEvent(event) ? 'bg-amber-100 text-amber-700 border border-amber-200 shadow-sm' :
+                          isRejectedEvent(event) ? 'bg-red-100 text-red-700' :
                           'bg-emerald-100 text-emerald-700 shadow-sm'
                         }`}>
-                          {event.isArchived ? 'Archived' : event.status || 'Published'}
+                          {event.isArchived ? 'Archived' : (event.status || 'Pending')}
                         </span>
                       </td>
                       <td className="p-5 text-right pr-8">
                         
-                        {event.status === 'Pending' && !event.isArchived ? (
+                        {isPendingEvent(event) ? (
                           <div className="flex items-center justify-end gap-2">
                             <button onClick={() => confirmApprove(event)} className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition shadow-sm">Approve</button>
                             <button onClick={() => confirmReject(event)} className="px-4 py-2 bg-red-50 text-red-600 rounded-xl text-xs font-bold hover:bg-red-100 transition">Reject</button>
                           </div>
                         ) : (
                           <div className="flex items-center justify-end gap-2">
-                            <button onClick={() => setAttendeesModal({ show: true, eventTitle: event.title, eventId: event.id })} className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition" title="View Attendees"><Eye size={18} /></button>
+                            {isPublishedEvent(event) ? (
+                              <button
+                                onClick={() => setAttendeesModal({ show: true, eventTitle: event.title, eventId: event.id })}
+                                className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition"
+                                title="View Attendees"
+                              >
+                                <Eye size={18} />
+                              </button>
+                            ) : (
+                              <button
+                                disabled
+                                className="p-2 text-gray-300 bg-gray-50 rounded-xl cursor-not-allowed"
+                                title="Available when the event is Published"
+                              >
+                                <Eye size={18} />
+                              </button>
+                            )}
                             <button onClick={() => confirmArchive(event.id, event.title, event.isArchived)} disabled={cannotArchive} className={`p-2 rounded-xl transition ${cannotArchive ? 'text-gray-300 bg-gray-50 cursor-not-allowed' : event.isArchived ? 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100' : 'text-red-500 bg-red-50 hover:bg-red-100'}`}><Archive size={18} /></button>
                             <button onClick={() => navigate('/admin/create', { state: { eventToEdit: event } })} className="p-2 text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition" title="Edit Event"><Settings size={18} /></button>
                           </div>
@@ -418,68 +460,47 @@ export default function AdminDashboard() {
       {/* 🌟 RESTORED AND POLISHED: VIEW ATTENDEES MODAL */}
       {attendeesModal.show && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in duration-200 scale-100">
-            
-            <div className="bg-slate-950 px-8 py-5 flex justify-between items-center border-b border-slate-800">
-              <div>
-                <h3 className="text-xl font-extrabold text-white flex items-center gap-3">
-                  <Users className="text-blue-500" /> Attendee List
-                </h3>
-                <p className="text-slate-400 text-sm mt-1 font-medium truncate max-w-md">{attendeesModal.eventTitle}</p>
-              </div>
-              <button onClick={() => setAttendeesModal({ show: false, eventTitle: '', eventId: null })} className="text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 p-2 rounded-full transition-colors">
-                <X size={20} strokeWidth={2.5} />
-              </button>
+          <div className="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-lg text-center animate-in zoom-in duration-200 scale-100">
+            <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 bg-blue-50 border-8 border-blue-100/50 text-blue-600">
+              <Users size={32} strokeWidth={2.5} />
             </div>
+            <h2 className="text-2xl font-extrabold mb-2 text-gray-900 tracking-tight">Attendee List</h2>
+            <p className="text-gray-500 font-medium leading-relaxed">{attendeesModal.eventTitle}</p>
+            <p className="text-xs text-gray-400 font-bold tracking-widest uppercase mt-3">
+              {currentEventAttendees.length} {currentEventAttendees.length === 1 ? 'person' : 'people'}
+            </p>
 
-            <div className="p-0 overflow-y-auto flex-1 bg-gray-50/30">
+            <div className="max-h-[50vh] overflow-y-auto pr-1 mt-8 text-left">
               {currentEventAttendees.length > 0 ? (
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-white sticky top-0 border-b border-gray-200 shadow-sm z-10">
-                    <tr>
-                      <th className="p-5 font-bold text-xs text-gray-500 uppercase tracking-wider">Attendee Name</th>
-                      <th className="p-5 font-bold text-xs text-gray-500 uppercase tracking-wider">Email</th>
-                      <th className="p-5 font-bold text-xs text-gray-500 uppercase tracking-wider">Amount Paid</th>
-                      <th className="p-5 font-bold text-xs text-gray-500 uppercase tracking-wider text-right">Ticket ID</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {currentEventAttendees.map(att => (
-                      <tr key={att.id} className="hover:bg-blue-50/50 transition-colors bg-white">
-                        <td className="p-5 font-extrabold text-gray-900">{att.name}</td>
-                        <td className="p-5 text-gray-600 font-medium">{att.email || 'Email not provided'}</td>
-                        <td className="p-5 font-extrabold text-emerald-600">
-                          {att.amountPaid === '0' || att.amountPaid === 'Free' ? 'FREE' : `₱${att.amountPaid}`}
-                        </td>
-                        <td className="p-5 text-right">
-                          <span className="font-mono text-xs font-bold bg-slate-100 text-slate-600 px-2.5 py-1 rounded-md border border-slate-200 tracking-wider">
-                            #{att.ticketId}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <div className="space-y-2">
+                  {currentEventAttendees.map(att => (
+                    <div
+                      key={att.id}
+                      className="flex items-center gap-4 bg-gray-50/80 border border-gray-200 rounded-2xl px-4 py-3"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-extrabold text-xs tracking-wider shrink-0">
+                        {getInitials(att.name)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-extrabold text-gray-900 truncate">{att.name}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               ) : (
-                <div className="p-20 text-center flex flex-col items-center justify-center h-full">
-                  <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-5 text-gray-400">
-                    <Ticket size={32} strokeWidth={1.5} />
-                  </div>
-                  <h3 className="text-xl font-extrabold text-gray-900 mb-2">No Tickets Sold Yet</h3>
-                  <p className="text-gray-500 text-sm font-medium max-w-xs">When users purchase tickets for this event, their details will appear here securely.</p>
+                <div className="p-10 text-center border border-dashed border-gray-200 rounded-2xl bg-gray-50/40">
+                  <p className="text-gray-600 font-extrabold">No attendees yet</p>
+                  <p className="text-gray-500 text-sm font-medium mt-1">Names will appear here after tickets are purchased.</p>
                 </div>
               )}
             </div>
-            
-            <div className="p-5 border-t border-gray-200 bg-white flex justify-end shadow-[0_-4px_6px_-1px_rgb(0,0,0,0.05)] z-20">
-              <button 
-                onClick={() => setAttendeesModal({ show: false, eventTitle: '', eventId: null })}
-                className="px-8 py-2.5 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-colors shadow-md"
-              >
-                Close Panel
-              </button>
-            </div>
 
+            <button
+              onClick={closeAttendeesModal}
+              className="w-full mt-8 py-3.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 font-bold transition-all shadow-md active:scale-95"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}
