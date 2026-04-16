@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common'; // 🌟 Added NotFoundException
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common'; // 🌟 Added BadRequestException
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Attendee } from './entities/attendee.entity';
@@ -94,15 +94,33 @@ export class AttendeesService {
     };
   }
 
-  async scanTicket(ticketId: string) {
-    const attendee = await this.attendeeRepository.findOneBy({ ticketId });
+  // 🌟 COMPLETELY REWRITTEN SCANNER LOGIC
+  async scanTicket(rawTicketId: string) {
+    // 1. Clean the input to remove hidden spaces/newlines from the scanner hardware
+    const cleanTicketId = rawTicketId.trim();
 
+    const attendee = await this.attendeeRepository.findOne({ 
+      where: { ticketId: cleanTicketId } 
+    });
+
+    // 2. Clear error if it genuinely doesn't exist
     if (!attendee) {
-      throw new Error('Ticket not found');
+      throw new NotFoundException('Ticket not found in the database.');
     }
 
+    // 3. Prevent double-scanning
+    if (attendee.status === 'Checked In') {
+      throw new BadRequestException('This ticket has already been scanned!');
+    }
+
+    // 4. Prevent cancelled tickets from entering
+    if (attendee.status === 'Cancelled') {
+      throw new BadRequestException('This ticket was cancelled.');
+    }
+
+    // 5. If it passes all checks (Pending, Confirmed, etc.), Check them in!
     attendee.status = 'Checked In';
-    return this.attendeeRepository.save(attendee);
+    return await this.attendeeRepository.save(attendee);
   }
 
   // 🌟 NEW: The function that updates status in MySQL

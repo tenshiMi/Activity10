@@ -1,7 +1,19 @@
-import { Controller, Get, Post, Body, Param, Delete, HttpCode, HttpStatus, Patch, Put } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Delete,
+  HttpCode,
+  HttpStatus,
+  Patch,
+  Put,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 @ApiTags('users')
 @Controller('users')
@@ -16,14 +28,12 @@ export class UsersController {
     return this.usersService.create(createUserDto);
   }
 
-  // 🌟 FIX: Changed route to '/verify' and the body key to 'code' to match your React code!
   @Post('verify')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Verify user email using OTP' })
   @ApiResponse({ status: 200, description: 'Email verified successfully' })
   @ApiResponse({ status: 400, description: 'Invalid or expired OTP' })
   verifyEmail(@Body() body: { email: string; code: string }) {
-    // We pass body.code into your service's OTP parameter
     return this.usersService.verifyEmailOtp(body.email, body.code);
   }
 
@@ -41,17 +51,47 @@ export class UsersController {
     return this.usersService.findAll();
   }
 
+  @Get(':id')
+  @ApiOperation({ summary: 'Get one user by ID' })
+  @ApiResponse({ status: 200, description: 'User found successfully' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  findOne(@Param('id') id: string) {
+    return this.usersService.findOne(+id);
+  }
+
+  @Post(':id/email-change/send')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Send OTP for changing existing user email' })
+  @ApiResponse({ status: 200, description: 'OTP sent successfully' })
+  sendEmailChangeOtp(
+    @Param('id') id: string,
+    @Body() body: { newEmail: string; currentPassword: string },
+  ) {
+    return this.usersService.sendEmailChangeOtp(+id, body.newEmail, body.currentPassword);
+  }
+
+  @Post(':id/email-change/verify')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify OTP and apply email change' })
+  @ApiResponse({ status: 200, description: 'Email changed successfully' })
+  verifyEmailChangeOtp(
+    @Param('id') id: string,
+    @Body() body: { code: string },
+  ) {
+    return this.usersService.verifyEmailChangeOtp(+id, body.code);
+  }
+
   @Patch(':id')
   @ApiOperation({ summary: 'Update a user by ID (Partial Update)' })
   @ApiResponse({ status: 200, description: 'User updated successfully' })
-  updatePartial(@Param('id') id: string, @Body() updateData: any) {
+  updatePartial(@Param('id') id: string, @Body() updateData: UpdateUserDto) {
     return this.usersService.update(+id, updateData);
   }
 
   @Put(':id')
   @ApiOperation({ summary: 'Update a user by ID (Full Update)' })
   @ApiResponse({ status: 200, description: 'User updated successfully' })
-  updateFull(@Param('id') id: string, @Body() updateData: any) {
+  updateFull(@Param('id') id: string, @Body() updateData: UpdateUserDto) {
     return this.usersService.update(+id, updateData);
   }
 

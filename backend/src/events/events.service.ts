@@ -1,12 +1,13 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, LessThan } from 'typeorm'; // 🌟 Added LessThan
 import { Event } from './entities/event.entity';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
+import { Cron, CronExpression } from '@nestjs/schedule'; // 🌟 Added Cron imports
 
 @Injectable()
-export class EventsService {
+export class EventsService implements OnModuleInit {
     constructor(
         @InjectRepository(Event)
         private eventsRepository: Repository<Event>,
@@ -58,5 +59,45 @@ export class EventsService {
         }
         
         return await this.eventsRepository.update(id, { status });
+    }
+
+    // ==========================================
+    // 🌟 NEW: RUNS ON SERVER STARTUP
+    // ==========================================
+    async onModuleInit() {
+        console.log('🚀 Server starting: Running initial sweep for expired events...');
+        await this.autoCompleteExpiredEvents();
+    }
+
+    // ==========================================
+    // 🌟 AUTOMATED MIDNIGHT EVENT COMPLETION
+    // ==========================================
+    @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+    async autoCompleteExpiredEvents() {
+        console.log('🔄 Running background check for expired events...');
+        
+        // 1. Get today's date
+        const today = new Date();
+        
+        // 🌟 FIX: Convert it to a 'YYYY-MM-DD' string to match your database format!
+        const todayString = today.toISOString().split('T')[0];
+
+        // 2. Find all active events whose date string is older than today's date string
+        const expiredEvents = await this.eventsRepository.find({
+            where: {
+                status: 'Published', 
+                date: LessThan(todayString), // Pass the string here instead!
+            },
+        });
+
+        if (expiredEvents.length > 0) {
+            // Loop through and update their status to 'Completed'
+            for (const event of expiredEvents) {
+                event.status = 'Completed';
+            }
+            
+            await this.eventsRepository.save(expiredEvents);
+            console.log(`✅ Automatically moved ${expiredEvents.length} events to Completed status.`);
+        }
     }
 }

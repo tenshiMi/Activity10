@@ -1,46 +1,77 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn} from 'typeorm';
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
 @Entity()
 export class User {
   @PrimaryGeneratedColumn()
-  id: number;
+  id!: number; // 🌟 FIX: Added '!' to all properties
 
-  @Column({ unique: true }) // Emails must be unique
-  email: string;
-
-  @Column()
-  password: string; // We will store this Encrypted (Hashed)
+  @Column({ unique: true })
+  email!: string;
 
   @Column()
-  name: string;
+  password!: string;
 
-  @Column({ default: 'Attendee' }) // Default role
-  role: string; // 'Admin', 'Organizer', 'Attendee', 'Staff'
+  @Column()
+  name!: string;
+
+  @Column({ default: 'Attendee' })
+  role!: string;
 
   @Column({ default: true })
-  isActive: boolean;
+  isActive!: boolean;
 
   @Column({ type: 'varchar', nullable: true })
-  resetOtp: string | null;
+  resetOtp!: string | null;
 
   @Column({ type: 'datetime', nullable: true })
-  resetOtpExpires: Date | null;
+  resetOtpExpires!: Date | null;
 
   @Column({ default: false })
-  isArchived: boolean;
+  isArchived!: boolean;
 
   @Column({ type: 'timestamp', nullable: true })
-  archivedAt: Date; 
+  archivedAt!: Date | null;
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt!: Date;
 
-  // 🌟 NEW: Add Username
-  @Column({ nullable: true, unique: true })
-  username: string;
+  @UpdateDateColumn()
+  updatedAt!: Date;
 
-  // 🌟 NEW: Add Avatar URL (Set type to 'text' to handle long Base64 image strings!)
+  // 🌟 FIX: Explicitly tell TypeORM this is a varchar (string)
+  @Column({ type: 'varchar', nullable: true, unique: true })
+  username!: string | null;
+
   @Column({ type: 'text', nullable: true })
-  avatarUrl: string;
-  
+  avatarUrl!: string | null;
+
+  // Preferences
+  @Column({ default: true })
+  eventReminders!: boolean;
+
+  @Column({ default: true })
+  bookingUpdates!: boolean;
+
+  @Column({ default: false })
+  marketingEmails!: boolean;
+
+  @Column({ default: false })
+  darkMode!: boolean;
+
+  // Email change OTP flow
+  // 🌟 FIX: Explicitly tell TypeORM this is a varchar
+  @Column({ type: 'varchar', nullable: true, unique: true })
+  pendingEmail!: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  pendingEmailOtp!: string | null;
+
+  @Column({ type: 'datetime', nullable: true })
+  pendingEmailOtpExpires!: Date | null;
 }

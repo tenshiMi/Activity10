@@ -2,13 +2,20 @@ import { PartialType } from '@nestjs/mapped-types';
 import { CreateUserDto } from './create-user.dto';
 
 export class UpdateUserDto extends PartialType(CreateUserDto) {
-  isActive?: boolean;
   isArchived?: boolean;
-  archivedAt?: Date;
-  resetOtp?: string;
-  resetOtpExpires?: Date;
+  archivedAt?: Date | null;
+  resetOtp?: string | null;
+  resetOtpExpires?: Date | null;
 
-  // 🌟 NEW: Add these so NestJS knows to accept them from the frontend!
-  username?: string;
-  avatarUrl?: string;
+  // username is automatically inherited from CreateUserDto!
+  avatarUrl?: string | null;
+
+  currentPassword?: string;
+  newPassword?: string;
+
+  // Preferences
+  eventReminders?: boolean;
+  bookingUpdates?: boolean;
+  marketingEmails?: boolean;
+  darkMode?: boolean;
 }

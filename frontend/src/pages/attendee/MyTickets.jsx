@@ -1,69 +1,61 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../lib/api';
-import { Ticket, Calendar, MapPin, Trash2, AlertCircle, XCircle, ArrowLeft, CheckCircle2 } from 'lucide-react';
-import { QRCodeSVG } from 'qrcode.react';
+import { Calendar, MapPin, Ticket, Clock, CheckCircle2, Search, History, X } from 'lucide-react'; // 🌟 Added X
+import PageLoader from '../../components/PageLoader'; 
 
 export default function MyTickets() {
-  const [tickets, setTickets] = useState([]);
   const [events, setEvents] = useState([]);
+  const [myTickets, setMyTickets] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  
-  // 🌟 NEW: Custom Modals
-  const [cancelModal, setCancelModal] = useState({ show: false, ticketId: null, attendeeId: null, eventTitle: '', organizerId: null });
-  const [statusModal, setStatusModal] = useState({ show: false, type: 'success', title: '', message: '' });
+  const [activeTab, setActiveTab] = useState('upcoming'); 
+  const [selectedQr, setSelectedQr] = useState(null); // 🌟 NEW: State for the QR popup
 
-  let user = null;
-  let token = null;
-  let isLoggedIn = false;
-
-  try {
-    const userData = localStorage.getItem('user');
-    user = userData ? JSON.parse(userData) : null;
-    token = localStorage.getItem('token');
-    isLoggedIn = user && token;
-  } catch (err) {
-    console.error('Error parsing user data:', err);
-    if (!error) setError('Invalid user session. Please log in again.');
-  }
+  const user = JSON.parse(localStorage.getItem('user') || 'null');
 
   useEffect(() => {
-    if (error) {
-      setLoading(false);
-      return;
-    }
-
-    const fetchData = async () => {
+    const fetchMyTickets = async () => {
       try {
-        const [attendeeRes, eventRes] = await Promise.all([
-          api.get('/attendees'),
-          api.get('/events')
+        setLoading(true);
+        const [eventsRes, attendeesRes] = await Promise.all([
+          api.get('/events'),
+          api.get('/attendees')
         ]);
-
-        if (isLoggedIn && user?.email) {
-          const myTickets = attendeeRes.data.filter(ticket => ticket.email === user.email);
-          // Show newest tickets first
-          setTickets(myTickets.reverse());
-        } else {
-          setTickets([]);
+        
+        if (user?.email) {
+          const myActiveTickets = attendeesRes.data.filter(
+            a => a.email === user.email && a.status !== 'Cancelled'
+          );
+          
+          const myEventIds = myActiveTickets.map(t => String(t.eventId));
+          const myDetailedEvents = eventsRes.data.filter(e => myEventIds.includes(String(e.id)));
+          
+          setEvents(myDetailedEvents);
+          setMyTickets(myActiveTickets);
         }
-        setEvents(eventRes.data);
-        setLoading(false);
-      } catch (err) {
-        console.error("Error loading tickets:", err);
-        setError('Failed to load tickets. Please try again.');
+        
+        setTimeout(() => setLoading(false), 500); 
+      } catch (error) {
+        console.error("Error fetching tickets:", error);
         setLoading(false);
       }
     };
-    fetchData();
-  }, [isLoggedIn, user?.email, error]);
+
+    if (user) {
+      fetchMyTickets();
+    } else {
+      setLoading(false);
+    }
+  }, [user?.email]);
+
+  const upcomingEvents = events.filter(e => e.status === 'Published');
+  const pastEvents = events.filter(e => e.status === 'Completed' || e.isArchived);
+  const displayedEvents = activeTab === 'upcoming' ? upcomingEvents : pastEvents;
 
   const formatDateTime = (dateStr, timeStr) => {
     try {
       const dateObj = new Date(dateStr);
       const formattedDate = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-      
       let formattedTime = timeStr;
       if (timeStr) {
           const [hours, minutes] = timeStr.split(':');
@@ -72,247 +64,193 @@ export default function MyTickets() {
           formattedTime = `${h % 12 || 12}:${minutes} ${ampm}`;
       }
       return `${formattedDate} • ${formattedTime}`;
-    } catch {
-      return `${dateStr} • ${timeStr}`;
-    }
-  };
-
-  const getEventInfo = (eventId) => {
-    return events.find(e => e.id.toString() === String(eventId)) || {};
-  };
-
-  // 🌟 NEW: Advanced Cancellation Logic
-  const handleCancel = async () => {
-    try {
-      // 🌟 FIX 1: Changed back to DELETE so your backend accepts it and allows re-purchasing!
-      await api.delete(`/attendees/${cancelModal.attendeeId}`);
-
-      // 🌟 FIX 2: Still send the notification to the Organizer!
-      if (cancelModal.organizerId) {
-        await api.post('/notifications', {
-          userId: cancelModal.organizerId,
-          title: 'Ticket Cancelled ⚠️',
-          message: `${user.name || 'An attendee'} cancelled their ticket for "${cancelModal.eventTitle}".`,
-          type: 'SYSTEM'
-        });
-      }
-
-      // 🌟 FIX 3: Update the UI to show the cool "Cancelled" stamp until they refresh the page
-      setTickets(tickets.map(t => 
-        t.id === cancelModal.attendeeId ? { ...t, status: 'Cancelled' } : t
-      ));
-
-      setCancelModal({ show: false, ticketId: null, attendeeId: null, eventTitle: '', organizerId: null });
-      setStatusModal({ show: true, type: 'success', title: 'Ticket Cancelled', message: 'Your registration has been successfully cancelled.' });
-    } catch (error) {
-      console.error("Error cancelling:", error);
-      setCancelModal({ show: false, ticketId: null, attendeeId: null, eventTitle: '', organizerId: null });
-      setStatusModal({ show: true, type: 'error', title: 'Error', message: 'Failed to cancel ticket.' });
-    }
+    } catch { return `${dateStr} • ${timeStr}`; }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50/50 font-sans pb-20">
-      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+    <PageLoader isLoading={loading} message="Fetching your tickets...">
+      <div className="min-h-screen bg-slate-50/50 font-sans pb-20 relative">
         
-        {/* 🌟 PREMIUM BREADCRUMB & HEADER */}
-        <div className="mb-12">
-          <Link to="/" className="inline-flex items-center gap-2 text-gray-500 hover:text-blue-600 font-bold text-sm transition-colors mb-6 group">
-            <div className="bg-white border border-gray-200 p-1.5 rounded-lg group-hover:border-blue-200 group-hover:bg-blue-50 transition-colors shadow-sm">
-              <ArrowLeft size={16} strokeWidth={2.5} />
-            </div>
-            Back to Events
-          </Link>
-          
-          <h1 className="text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight">
-            <Ticket className="text-blue-600 w-10 h-10" /> My Digital Wallet
-          </h1>
-          <p className="text-gray-500 mt-2 font-medium text-lg">Manage your event tickets and QR passes.</p>
-        </div>
-
-        {/* ERROR STATE */}
-        {error ? (
-          <div className="text-center py-12">
-            <div className="bg-red-50 border border-red-200 rounded-3xl p-10 max-w-md mx-auto shadow-sm">
-              <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <AlertCircle className="text-red-600" size={32} />
+        {/* HEADER SECTION */}
+        <div className="bg-white border-b border-gray-200/80 pt-10 pb-8 px-6 mb-8">
+          <div className="max-w-[1400px] mx-auto">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+              <div>
+                <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight mb-2">My Tickets</h1>
+                <p className="text-slate-500 font-medium">Manage your upcoming experiences and view past events.</p>
               </div>
-              <h2 className="text-2xl font-extrabold text-gray-900 mb-2 tracking-tight">Error Loading Wallet</h2>
-              <p className="text-gray-600 mb-8 font-medium">{error}</p>
-              <button onClick={() => { setError(null); setLoading(true); window.location.reload(); }} className="w-full px-6 py-4 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all shadow-md active:scale-95">
-                Try Again
-              </button>
-            </div>
-          </div>
-
-        /* LOGGED OUT STATE */
-        ) : !isLoggedIn ? (
-          <div className="text-center py-12">
-            <div className="bg-white border border-gray-200 rounded-3xl p-10 max-w-md mx-auto shadow-sm">
-              <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Ticket className="text-blue-600" size={32} />
-              </div>
-              <h2 className="text-2xl font-extrabold text-gray-900 mb-2 tracking-tight">Please Log In</h2>
-              <p className="text-gray-500 mb-8 font-medium">You need to be logged in to view your tickets.</p>
-              <Link to="/login" className="flex items-center justify-center w-full px-6 py-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-all shadow-md active:scale-95">
-                Log In
+              <Link to="/" className="inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-2.5 rounded-xl text-sm font-bold transition-all">
+                <Search size={18} /> Browse More Events
               </Link>
             </div>
-          </div>
 
-        /* LOADING STATE */
-        ) : loading ? (
-          <div className="flex justify-center items-center py-32">
-            <div className="animate-pulse flex flex-col items-center gap-4">
-              <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
-              <p className="text-gray-500 font-bold text-lg tracking-tight">Retrieving your wallet...</p>
+            {/* TAB TOGGLE SYSTEM */}
+            <div className="flex gap-4 mt-8">
+              <button 
+                onClick={() => setActiveTab('upcoming')}
+                className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${
+                  activeTab === 'upcoming' 
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20' 
+                    : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
+                }`}
+              >
+                <Ticket size={18} /> Upcoming ({upcomingEvents.length})
+              </button>
+              <button 
+                onClick={() => setActiveTab('past')}
+                className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${
+                  activeTab === 'past' 
+                    ? 'bg-slate-900 text-white shadow-md' 
+                    : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
+                }`}
+              >
+                <History size={18} /> Past Events ({pastEvents.length})
+              </button>
             </div>
           </div>
+        </div>
 
-        /* EMPTY WALLET STATE */
-        ) : tickets.length === 0 ? (
-          <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-16 text-center max-w-2xl mx-auto mt-4">
-            <div className="w-24 h-24 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Ticket size={40} strokeWidth={2} />
+        <div className="max-w-[1400px] mx-auto px-6">
+          {!loading && displayedEvents.length === 0 ? (
+            <div className="text-center bg-white p-16 rounded-3xl border border-slate-200 shadow-sm mt-8 animate-in fade-in duration-500">
+              <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                {activeTab === 'upcoming' ? (
+                  <Ticket size={40} className="text-slate-400" />
+                ) : (
+                  <History size={40} className="text-slate-400" />
+                )}
+              </div>
+              <h3 className="text-2xl font-extrabold text-slate-950 mb-3 tracking-tight">
+                {activeTab === 'upcoming' ? "No upcoming events" : "No past events yet"}
+              </h3>
+              <p className="text-slate-500 font-medium max-w-md mx-auto mb-8">
+                {activeTab === 'upcoming' 
+                  ? "You haven't registered for any future events yet. Explore the platform to find your next adventure!"
+                  : "Once you attend an event and it is completed, it will show up here as a memory."}
+              </p>
+              {activeTab === 'upcoming' && (
+                <Link to="/" className="inline-flex items-center gap-2 bg-blue-600 text-white px-8 py-4 rounded-xl text-sm font-extrabold hover:bg-blue-700 transition-all shadow-md active:scale-95">
+                  Explore Events
+                </Link>
+              )}
             </div>
-            <h3 className="text-3xl font-extrabold text-gray-900 mb-4 tracking-tight">Your wallet is empty</h3>
-            <p className="text-gray-500 font-medium mb-8 text-lg">You haven't registered for any events yet. Discover amazing experiences happening near you!</p>
-            <Link to="/" className="inline-flex items-center justify-center bg-slate-900 text-white px-10 py-4 rounded-2xl font-bold hover:bg-slate-800 transition-all shadow-md active:scale-95 text-lg">
-              Browse Events
-            </Link>
-          </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+              {displayedEvents.map((event) => {
+                const userTicket = myTickets.find(t => String(t.eventId) === String(event.id));
 
-        /* 🌟 TICKETS GRID */
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {tickets.map(ticket => {
-              const event = getEventInfo(ticket.eventId);
-              const isCheckedIn = ticket.status === 'Checked In';
-              const isCancelled = ticket.status === 'Cancelled';
-
-              return (
-                <div key={ticket.id} className={`flex flex-col drop-shadow-[0_10px_20px_rgba(0,0,0,0.05)] transition-all duration-300 transform ${isCancelled ? 'opacity-60 grayscale-[0.6]' : 'hover:drop-shadow-[0_15px_30px_rgba(0,0,0,0.1)] hover:-translate-y-1'}`}>
-                  
-                  {/* TOP STUB (QR Code) */}
-                  <div className={`rounded-t-[2rem] p-8 flex flex-col items-center justify-center relative overflow-hidden ${isCancelled ? 'bg-slate-800' : 'bg-slate-950'}`}>
-                    <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white to-transparent mix-blend-overlay"></div>
+                return (
+                  <div key={event.id} className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-xl transition-all duration-300 group flex flex-col hover:-translate-y-1">
                     
-                    <div className={`bg-white p-3 rounded-2xl shadow-inner relative z-10 mb-5 ${isCancelled ? 'opacity-50 blur-[2px]' : ''}`}>
-                      {/* 🌟 ACTUAL QR CODE COMPONENT */}
-                      <QRCodeSVG value={ticket.ticketId} size={150} level="H" />
+                    <div className="h-48 relative overflow-hidden shrink-0 bg-slate-100">
+                      {event.imageUrl || event.bannerUrl ? (
+                        <img src={event.imageUrl || event.bannerUrl} alt={event.title} className={`w-full h-full object-cover transition-transform duration-700 ease-in-out ${activeTab === 'upcoming' ? 'group-hover:scale-105' : 'grayscale'}`} />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-slate-800 to-slate-900"></div>
+                      )}
+                      
+                      <div className="absolute top-4 right-4 flex gap-2">
+                        {userTicket?.status === 'Checked In' ? (
+                           <span className="px-3 py-1.5 bg-emerald-500/90 backdrop-blur-md text-white text-[10px] uppercase tracking-widest font-extrabold rounded-lg shadow-sm flex items-center gap-1">
+                             <CheckCircle2 size={12} /> Attended
+                           </span>
+                        ) : activeTab === 'upcoming' ? (
+                          <span className="px-3 py-1.5 bg-white/90 backdrop-blur-md text-slate-900 text-[10px] uppercase tracking-widest font-extrabold rounded-lg shadow-sm">
+                            Ready
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
                     
-                    <p className={`font-mono tracking-[0.25em] text-sm font-bold relative z-10 ${isCancelled ? 'text-slate-500 line-through' : 'text-slate-300'}`}>
-                      {ticket.ticketId}
-                    </p>
-                    
-                    <span className={`mt-4 relative z-10 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[10px] font-extrabold uppercase tracking-widest ${
-                      isCheckedIn 
-                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
-                        : isCancelled
-                        ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                        : 'bg-amber-500/20 text-amber-400 border border-amber-500/30 shadow-[0_0_10px_rgba(245,158,11,0.2)] animate-pulse'
-                    }`}>
-                      {ticket.status}
-                    </span>
-                  </div>
-
-                  {/* 🌟 PERFORATED DIVIDER WITH CUTOUTS */}
-                  <div className="bg-white relative h-10 -my-5 z-20 flex items-center overflow-hidden">
-                    <div className="absolute -left-5 w-10 h-10 bg-gray-50/50 rounded-full border-r border-gray-200 shadow-inner"></div>
-                    <div className="w-full border-t-[3px] border-dashed border-gray-200"></div>
-                    <div className="absolute -right-5 w-10 h-10 bg-gray-50/50 rounded-full border-l border-gray-200 shadow-inner"></div>
-                  </div>
-
-                  {/* BOTTOM STUB (Details) */}
-                  <div className="bg-white rounded-b-[2rem] border border-t-0 border-gray-100 p-8 flex-1 flex flex-col justify-between">
-                    <div>
-                      <h3 className={`text-2xl font-extrabold mb-6 leading-tight line-clamp-2 tracking-tight ${isCancelled ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
-                        {event.title || 'Unknown Event'}
+                    <div className="p-6 flex-1 flex flex-col">
+                      <h3 className="text-2xl font-black text-slate-950 mb-4 line-clamp-2 leading-tight tracking-tight">
+                        {event.title}
                       </h3>
                       
-                      <div className="space-y-4 mb-8">
-                        <div className={`flex items-start gap-3 text-sm font-medium ${isCancelled ? 'text-gray-400' : 'text-gray-600'}`}>
-                          <Calendar size={20} className={`${isCancelled ? 'text-gray-300' : 'text-blue-500'} shrink-0`} strokeWidth={2.5} />
-                          <span className="leading-snug">{formatDateTime(event.date, event.time)}</span>
+                      <div className="space-y-3 text-slate-500 mb-6 flex-1">
+                        <div className="flex items-start gap-3 text-sm font-medium">
+                          <div className="p-1.5 bg-blue-50 rounded-lg text-blue-500 mt-0.5"><Calendar size={16} /></div>
+                          <span className="text-slate-700 leading-snug">{formatDateTime(event.date, event.time)}</span>
                         </div>
-                        <div className={`flex items-start gap-3 text-sm font-medium ${isCancelled ? 'text-gray-400' : 'text-gray-600'}`}>
-                          <MapPin size={20} className={`${isCancelled ? 'text-gray-300' : 'text-red-500'} shrink-0`} strokeWidth={2.5} />
-                          <span className="truncate leading-snug">{event.location}</span>
+                        <div className="flex items-start gap-3 text-sm font-medium">
+                          <div className="p-1.5 bg-rose-50 rounded-lg text-rose-500 mt-0.5"><MapPin size={16} /></div>
+                          <span className="text-slate-700 leading-snug line-clamp-2">{event.location}</span>
                         </div>
                       </div>
-                    </div>
 
-                    {/* Button Logic */}
-                    {isCheckedIn ? (
-                      <div className="w-full py-3.5 bg-gray-50 text-gray-400 border border-gray-200 rounded-xl text-sm font-extrabold text-center flex items-center justify-center gap-2 cursor-not-allowed">
-                         <CheckCircle2 size={18} strokeWidth={2.5} /> TICKET USED
-                      </div>
-                    ) : isCancelled ? (
-                      <div className="w-full py-3.5 bg-red-50 text-red-400 border border-red-100 rounded-xl text-sm font-extrabold text-center flex items-center justify-center gap-2 cursor-not-allowed">
-                         <XCircle size={18} strokeWidth={2.5} /> CANCELLED
-                      </div>
-                    ) : (
-                      <button 
-                        onClick={() => setCancelModal({ show: true, ticketId: ticket.ticketId, attendeeId: ticket.id, eventTitle: event.title, organizerId: event.organizerId })}
-                        className="w-full py-3.5 bg-white border-2 border-red-100 text-red-500 rounded-xl text-sm font-extrabold hover:bg-red-50 hover:border-red-200 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+                      {/* 🌟 UPGRADED: Clickable Ticket Number Block */}
+                      <div 
+                        onClick={() => userTicket?.ticketId && setSelectedQr(userTicket.ticketId)}
+                        className={`mb-6 p-4 rounded-2xl border flex items-center justify-between transition-all group ${
+                          userTicket?.ticketId 
+                            ? 'bg-slate-50 border-slate-200 hover:bg-blue-50 hover:border-blue-200 cursor-pointer' 
+                            : 'bg-slate-50 border-slate-100 opacity-70'
+                        }`}
+                        title={userTicket?.ticketId ? "Click to view QR Code" : "Processing ticket..."}
                       >
-                        <Trash2 size={18} strokeWidth={2.5} /> CANCEL TICKET
-                      </button>
-                    )}
-                  </div>
+                         <div>
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Ticket ID</span>
+                            <span className={`text-sm font-extrabold font-mono tracking-wider ${userTicket?.ticketId ? 'text-slate-900 group-hover:text-blue-700' : 'text-slate-500'}`}>
+                              {userTicket?.ticketId || 'PROCESSING...'}
+                            </span>
+                         </div>
+                         <div className={`p-2 rounded-xl transition-transform ${userTicket?.ticketId ? 'bg-white shadow-sm border border-slate-200 group-hover:scale-110 group-hover:text-blue-600' : 'text-slate-300'}`}>
+                           <Ticket size={20} />
+                         </div>
+                      </div>
 
-                </div>
-              );
-            })}
+                      <div className="mt-auto pt-2">
+                        <Link 
+                          to={`/event/${event.id}`} 
+                          className="w-full block text-center px-6 py-3 rounded-xl text-sm font-black transition-all active:scale-95 bg-blue-50 text-blue-700 hover:bg-blue-600 hover:text-white"
+                        >
+                          View Details
+                        </Link>
+                      </div>
+
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* 🌟 NEW: The QR Code Popup Modal */}
+        {selectedQr && (
+          <div 
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 animate-in fade-in duration-200" 
+            onClick={() => setSelectedQr(null)} // Close if background clicked
+          >
+            <div 
+              className="bg-white rounded-3xl shadow-2xl p-8 max-w-sm w-full text-center relative animate-in zoom-in-95 duration-300" 
+              onClick={e => e.stopPropagation()} // Prevent clicking the card from closing it
+            >
+              <button 
+                onClick={() => setSelectedQr(null)}
+                className="absolute top-4 right-4 text-slate-400 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-full p-2 transition-colors"
+              >
+                <X size={20} strokeWidth={2.5} />
+              </button>
+              
+              <h3 className="text-2xl font-black text-slate-900 mb-1">Your E-Ticket</h3>
+              <p className="text-sm text-slate-500 font-medium mb-8">Present this QR code at the entrance</p>
+              
+              <div className="bg-white p-4 rounded-2xl inline-block border-2 border-slate-100 mb-6 shadow-sm">
+                <img 
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${selectedQr}`} 
+                  alt="QR Code" 
+                  className="w-48 h-48"
+                />
+              </div>
+              <div className="bg-blue-50 text-blue-700 py-3 px-4 rounded-xl font-mono font-bold tracking-widest border border-blue-100">
+                {selectedQr}
+              </div>
+            </div>
           </div>
         )}
+
       </div>
-
-      {/* 🌟 PREMIUM CONFIRM CANCELLATION MODAL */}
-      {cancelModal.show && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-md text-center animate-in zoom-in duration-200 scale-100">
-            <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 bg-red-50 border-8 border-red-100/50 text-red-600">
-              <AlertCircle size={32} strokeWidth={2.5} />
-            </div>
-            <h2 className="text-2xl font-extrabold mb-3 text-gray-900 tracking-tight">Cancel Ticket?</h2>
-            <p className="text-gray-500 font-medium mb-8 leading-relaxed">
-              Are you sure you want to cancel your registration for <strong className="text-gray-900">{cancelModal.eventTitle}</strong>? This action cannot be undone.
-            </p>
-            <div className="flex gap-3">
-              <button 
-                onClick={() => setCancelModal({ show: false, ticketId: null, attendeeId: null, eventTitle: '', organizerId: null })} 
-                className="flex-1 py-3.5 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors cursor-pointer"
-              >
-                Keep It
-              </button>
-              <button 
-                onClick={handleCancel} 
-                className="flex-1 py-3.5 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all shadow-md shadow-red-600/20 active:scale-95 cursor-pointer"
-              >
-                Yes, Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Success/Error Modal */}
-      {statusModal.show && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-sm text-center animate-in zoom-in duration-200 scale-100">
-            <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 border-8 ${statusModal.type === 'error' ? 'bg-red-50 border-red-100/50 text-red-600' : 'bg-emerald-50 border-emerald-100/50 text-emerald-500'}`}>
-              {statusModal.type === 'error' ? <AlertCircle size={32} strokeWidth={2.5} /> : <CheckCircle2 size={32} strokeWidth={2.5} />}
-            </div>
-            <h2 className={`text-2xl font-extrabold mb-2 tracking-tight ${statusModal.type === 'error' ? 'text-red-600' : 'text-gray-900'}`}>{statusModal.title}</h2>
-            <p className="text-gray-500 font-medium mb-8 leading-relaxed">{statusModal.message}</p>
-            <button onClick={() => setStatusModal({ show: false, type: '', title: '', message: '' })} className="w-full py-3.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 font-bold transition-all shadow-md active:scale-95 cursor-pointer">
-              Got it
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+    </PageLoader>
   );
 }
