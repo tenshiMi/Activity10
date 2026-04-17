@@ -1,37 +1,43 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api';
-import { 
-    Plus, Calendar, MapPin, Settings, Archive, Ticket, 
+import {
+    Plus, Calendar, MapPin, Settings, Archive, Ticket,
     Image as ImageIcon, TrendingUp, CheckCircle,
-    Search, Filter, LayoutGrid, List, Eye, X 
+    Search, Filter, LayoutGrid, List, Eye, X,
+    Users, Wallet, Sparkles, ArrowUpRight, RotateCcw
 } from 'lucide-react';
 
 export default function OrganizerDashboard() {
     const [events, setEvents] = useState([]);
-    const [allAttendees, setAllAttendees] = useState([]); // 🌟 NEW: Needed for the Attendees Modal
+    const [allAttendees, setAllAttendees] = useState([]);
     const [loading, setLoading] = useState(true);
     const [modal, setModal] = useState({ show: false, type: 'success', title: '', message: '' });
     const navigate = useNavigate();
-    
+
     const user = JSON.parse(localStorage.getItem('user'));
     const isAdmin = user?.role === 'Admin';
 
-    // 🌟 NEW: Search, Filter, View Mode, and Attendees Modal States
     const [searchQuery, setSearchQuery] = useState('');
     const [categoryFilter, setCategoryFilter] = useState('All');
     const [statusFilter, setStatusFilter] = useState('Active');
     const [viewMode, setViewMode] = useState('grid');
     const [attendeesModal, setAttendeesModal] = useState({ show: false, eventTitle: '', eventId: null });
 
-    const fetchEvents = async () => {
+    // RESTORED: Advanced date filters
+    const [locationFilter, setLocationFilter] = useState('');
+    const [dateFrom, setDateFrom] = useState('');
+    const [dateTo, setDateTo] = useState('');
+    const [sortBy, setSortBy] = useState('newest');
+
+    // 🌟 Fetch data with a silent background polling option
+    const fetchEvents = async (showLoader = true) => {
         try {
-            setLoading(true);
-            const endpoint = isAdmin 
-                ? '/events' 
-                : `/events/organizer/${user.id}`; 
-                
-            // 🌟 FIX: Fetch attendees alongside events so we can view them in the modal
+            if (showLoader) setLoading(true);
+            const endpoint = isAdmin
+                ? '/events'
+                : `/events/organizer/${user.id}`;
+
             const [eventsRes, attendeesRes] = await Promise.all([
                 api.get(endpoint),
                 api.get('/attendees')
@@ -39,24 +45,25 @@ export default function OrganizerDashboard() {
 
             setEvents(eventsRes.data);
             setAllAttendees(attendeesRes.data);
-            setLoading(false);
         } catch (error) {
             console.error("Error loading data:", error);
-            setLoading(false);
+        } finally {
+            if (showLoader) setLoading(false);
         }
     };
 
+    // 🌟 Real-time data polling every 15 seconds
     useEffect(() => {
-        fetchEvents();
-    }, []);
+        fetchEvents(true);
+        const interval = setInterval(() => fetchEvents(false), 15000);
+        return () => clearInterval(interval);
+    }, [isAdmin, user?.id]);
 
     const getTicketsSold = (event) => {
-        if (Array.isArray(event.attendees)) return event.attendees.length;
-        if (event._count && event._count.attendees !== undefined) return event._count.attendees;
-        return event.ticketsSold || event.attendeeCount || (typeof event.attendees === 'number' ? event.attendees : 0);
+        return allAttendees.filter(a => String(a.eventId) === String(event.id) && a.status !== 'Cancelled').length;
     };
 
-    const getRevenue = (event) => {
+    const getRevenueNumber = (event) => {
         const sold = getTicketsSold(event);
         let price = 0;
         if (typeof event.price === 'number') price = event.price;
@@ -64,8 +71,14 @@ export default function OrganizerDashboard() {
             const parsed = parseFloat(event.price.replace(/[^0-9.]/g, ''));
             if (!isNaN(parsed)) price = parsed;
         }
-        const total = sold * price;
-        return total > 0 ? `₱${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '₱0.00';
+        return sold * price;
+    };
+
+    const getRevenue = (event) => {
+        const total = getRevenueNumber(event);
+        return total > 0
+            ? `₱${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            : '₱0.00';
     };
 
     const formatDate = (dateString) => {
@@ -75,7 +88,7 @@ export default function OrganizerDashboard() {
 
     const isEventDone = (dateString, timeString) => {
         const eventDateTime = new Date(`${dateString}T${timeString || '00:00:00'}`);
-        return eventDateTime < new Date(); 
+        return eventDateTime < new Date();
     };
 
     const handleArchive = async (event) => {
@@ -103,48 +116,107 @@ export default function OrganizerDashboard() {
         }
     };
 
-    // 🌟 NEW: Filtering Logic
-    const filteredEvents = events.filter(event => {
-        const matchesSearch = event.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                              (event.location && event.location.toLowerCase().includes(searchQuery.toLowerCase()));
-        const matchesCategory = categoryFilter === 'All' || event.category?.includes(categoryFilter);
-        const matchesStatus = statusFilter === 'All' || 
-                              (statusFilter === 'Active' && !event.isArchived) || 
-                              (statusFilter === 'Archived' && event.isArchived);
-        
-        return matchesSearch && matchesCategory && matchesStatus;
-    });
+    // RESTORED: Date filters cleared
+    const clearAllFilters = () => {
+        setSearchQuery('');
+        setCategoryFilter('All');
+        setStatusFilter('All');
+        setLocationFilter('');
+        setDateFrom('');
+        setDateTo('');
+        setSortBy('newest');
+    };
 
-    // 🌟 NEW: Helper to get attendees for the modal
-    const currentEventAttendees = allAttendees.filter(a => 
+    const filteredEvents = useMemo(() => {
+        const result = events.filter(event => {
+            const title = event.title?.toLowerCase() || '';
+            const location = event.location?.toLowerCase() || '';
+            const category = event.category || '';
+
+            const matchesSearch =
+                title.includes(searchQuery.toLowerCase()) ||
+                location.includes(searchQuery.toLowerCase());
+
+            const matchesCategory =
+                categoryFilter === 'All' || category.includes(categoryFilter);
+
+            const matchesStatus =
+                statusFilter === 'All' ||
+                (statusFilter === 'Active' && !event.isArchived) ||
+                (statusFilter === 'Archived' && event.isArchived);
+
+            const matchesLocation =
+                !locationFilter || location.includes(locationFilter.toLowerCase());
+
+            // RESTORED: Date filtering logic
+            const eventDate = event.date ? new Date(event.date) : null;
+            const fromOk = !dateFrom || (eventDate && eventDate >= new Date(dateFrom));
+            const toOk = !dateTo || (eventDate && eventDate <= new Date(dateTo));
+
+            return matchesSearch && matchesCategory && matchesStatus && matchesLocation && fromOk && toOk;
+        });
+
+        result.sort((a, b) => {
+            if (sortBy === 'newest') return new Date(b.date) - new Date(a.date);
+            if (sortBy === 'oldest') return new Date(a.date) - new Date(b.date);
+            if (sortBy === 'mostTickets') return getTicketsSold(b) - getTicketsSold(a);
+            if (sortBy === 'highestRevenue') return getRevenueNumber(b) - getRevenueNumber(a);
+            if (sortBy === 'titleAZ') return (a.title || '').localeCompare(b.title || '');
+            return 0;
+        });
+
+        return result;
+    }, [events, searchQuery, categoryFilter, statusFilter, locationFilter, dateFrom, dateTo, sortBy]);
+
+    const currentEventAttendees = allAttendees.filter(a =>
         String(a.eventId) === String(attendeesModal.eventId) && a.status !== 'Cancelled'
     );
 
     const defaultImage = "https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=800&auto=format&fit=crop";
 
+    const dashboardStats = useMemo(() => {
+        const totalEvents = events.length;
+        const activeEvents = events.filter(e => !e.isArchived && !isEventDone(e.date, e.time)).length;
+        const totalAttendees = events.reduce((sum, e) => sum + getTicketsSold(e), 0);
+        const totalRevenue = events.reduce((sum, e) => sum + getRevenueNumber(e), 0);
+
+        return {
+            totalEvents,
+            activeEvents,
+            totalAttendees,
+            totalRevenue: `₱${totalRevenue.toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            })}`
+        };
+    }, [events, allAttendees]);
+
     return (
-        <div className="w-full">
-            
+        <div className="w-full pb-24">
             {/* Header Section */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                 <div>
                     <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
                         {isAdmin ? 'All Platform Events' : 'My Events'}
                     </h1>
-                    <p className="text-gray-500 font-medium text-sm mt-1">Manage your upcoming events here.</p>
+                    <p className="text-gray-500 font-medium text-sm mt-1">
+                        Manage your upcoming events here.
+                    </p>
+                    <p className="text-gray-500 font-medium text-sm mt-2 max-w-2xl">
+                        This dashboard allows organizers to monitor event performance, track attendees, and manage operations in real-time.
+                    </p>
                 </div>
-                
+
                 <div className="flex items-center gap-4">
-                    {/* 🌟 NEW: View Toggle Switch */}
                     <div className="flex bg-gray-200/60 p-1 rounded-lg border border-gray-200">
-                        <button 
+                        <button
                             onClick={() => setViewMode('grid')}
                             className={`p-2 rounded-md flex items-center transition-all ${viewMode === 'grid' ? 'bg-white text-blue-600 shadow-sm font-bold' : 'text-gray-500 hover:text-gray-700'}`}
                             title="Grid View"
                         >
                             <LayoutGrid size={18} />
                         </button>
-                        <button 
+                        <button
                             onClick={() => setViewMode('list')}
                             className={`p-2 rounded-md flex items-center transition-all ${viewMode === 'list' ? 'bg-white text-blue-600 shadow-sm font-bold' : 'text-gray-500 hover:text-gray-700'}`}
                             title="List View"
@@ -153,34 +225,84 @@ export default function OrganizerDashboard() {
                         </button>
                     </div>
 
-                    <Link to={isAdmin ? '/admin/create' : '/organizer/create'} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold transition shadow-md shadow-blue-600/20 whitespace-nowrap">
+                    <Link
+                        to={isAdmin ? '/admin/create' : '/organizer/create'}
+                        className="hidden sm:flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold transition shadow-md shadow-blue-600/20 whitespace-nowrap"
+                    >
                         <Plus size={20} strokeWidth={2.5} />
                         Create New Event
                     </Link>
                 </div>
             </div>
 
-            {/* 🌟 NEW: Search & Filter Bar */}
-            <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 mb-8 flex flex-col md:flex-row gap-4">
-                <div className="relative flex-1">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                        <Search className="h-5 w-5 text-gray-400" />
+            {/* TOP ANALYTICS BAR */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 hover:shadow-md transition">
+                    <div className="flex items-center justify-between mb-3">
+                        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Total Events</span>
+                        <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                            <Calendar size={18} />
+                        </div>
                     </div>
-                    <input 
-                        type="text" 
-                        placeholder="Search your events by title or location..." 
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition"
-                    />
+                    <h3 className="text-2xl font-extrabold text-gray-900">{dashboardStats.totalEvents}</h3>
+                    <p className="text-sm text-gray-500 font-medium mt-1">All created events</p>
                 </div>
-                
-                <div className="flex gap-4">
-                    <div className="relative min-w-[160px]">
+
+                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 hover:shadow-md transition">
+                    <div className="flex items-center justify-between mb-3">
+                        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Active Events</span>
+                        <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                            <Sparkles size={18} />
+                        </div>
+                    </div>
+                    <h3 className="text-2xl font-extrabold text-gray-900">{dashboardStats.activeEvents}</h3>
+                    <p className="text-sm text-gray-500 font-medium mt-1">Currently running or upcoming</p>
+                </div>
+
+                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 hover:shadow-md transition">
+                    <div className="flex items-center justify-between mb-3">
+                        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Total Attendees</span>
+                        <div className="w-10 h-10 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center">
+                            <Users size={18} />
+                        </div>
+                    </div>
+                    <h3 className="text-2xl font-extrabold text-gray-900">{dashboardStats.totalAttendees}</h3>
+                    <p className="text-sm text-gray-500 font-medium mt-1">Tickets sold across events</p>
+                </div>
+
+                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 hover:shadow-md transition">
+                    <div className="flex items-center justify-between mb-3">
+                        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Total Revenue</span>
+                        <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                            <Wallet size={18} />
+                        </div>
+                    </div>
+                    <h3 className="text-2xl font-extrabold text-gray-900">{dashboardStats.totalRevenue}</h3>
+                    <p className="text-sm text-gray-500 font-medium mt-1">Estimated event earnings</p>
+                </div>
+            </div>
+
+            {/* Search & Filter Bar */}
+            <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 mb-8 flex flex-col gap-4">
+                <div className="flex flex-col md:flex-row gap-4">
+                    <div className="relative flex-1">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <Search className="h-5 w-5 text-gray-400" />
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="Search your events by title or location..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition"
+                        />
+                    </div>
+
+                    <div className="relative min-w-[180px]">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <Filter className="h-4 w-4 text-gray-400" />
                         </div>
-                        <select 
+                        <select
                             value={categoryFilter}
                             onChange={(e) => setCategoryFilter(e.target.value)}
                             className="w-full pl-9 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition appearance-none cursor-pointer text-sm font-bold text-gray-700"
@@ -194,16 +316,61 @@ export default function OrganizerDashboard() {
                             <option value="Theater / Comedy">Theater / Comedy</option>
                         </select>
                     </div>
-                    
-                    <select 
+
+                    <select
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value)}
-                        className="px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition appearance-none cursor-pointer text-sm font-bold text-gray-700 min-w-[120px]"
+                        className="px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition appearance-none cursor-pointer text-sm font-bold text-gray-700 min-w-[140px]"
                     >
                         <option value="Active">Active Only</option>
                         <option value="Archived">Archived Only</option>
                         <option value="All">All Statuses</option>
                     </select>
+                </div>
+
+                {/* RESTORED: Advanced Filters with 5-column grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
+                    <input
+                        type="text"
+                        placeholder="Filter by location..."
+                        value={locationFilter}
+                        onChange={(e) => setLocationFilter(e.target.value)}
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition text-sm font-medium text-gray-700"
+                    />
+
+                    <input
+                        type="date"
+                        value={dateFrom}
+                        onChange={(e) => setDateFrom(e.target.value)}
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition text-sm font-medium text-gray-700"
+                    />
+
+                    <input
+                        type="date"
+                        value={dateTo}
+                        onChange={(e) => setDateTo(e.target.value)}
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition text-sm font-medium text-gray-700"
+                    />
+
+                    <select
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value)}
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition appearance-none cursor-pointer text-sm font-bold text-gray-700"
+                    >
+                        <option value="newest">Sort: Newest</option>
+                        <option value="oldest">Sort: Oldest</option>
+                        <option value="mostTickets">Most Tickets Sold</option>
+                        <option value="highestRevenue">Highest Revenue</option>
+                        <option value="titleAZ">Title A-Z</option>
+                    </select>
+
+                    <button
+                        onClick={clearAllFilters}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-bold transition shadow-sm"
+                    >
+                        <RotateCcw size={16} />
+                        Reset Filters
+                    </button>
                 </div>
             </div>
 
@@ -215,45 +382,66 @@ export default function OrganizerDashboard() {
 
             {!loading && filteredEvents.length === 0 && (
                 <div className="bg-white rounded-2xl border border-gray-200 p-16 text-center shadow-sm">
-                    <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400">
-                        <Search size={32} />
+                    <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-500">
+                        <Calendar size={32} />
                     </div>
                     <h3 className="text-xl font-bold text-gray-900 mb-2">No events found</h3>
-                    <p className="text-gray-500 max-w-md mx-auto">
-                        We couldn't find any events matching your current search or filter criteria. 
+                    <p className="text-gray-500 max-w-md mx-auto font-medium">
+                        No events match your current search or filters. Try adjusting your filters or create a new event to get started.
                     </p>
-                    {(searchQuery || categoryFilter !== 'All' || statusFilter !== 'Active') && (
-                        <button 
-                            onClick={() => { setSearchQuery(''); setCategoryFilter('All'); setStatusFilter('All'); }}
-                            className="mt-6 text-blue-600 font-bold hover:text-blue-700 underline"
+
+                    <div className="flex items-center justify-center gap-3 mt-6 flex-wrap">
+                        <button
+                            onClick={clearAllFilters}
+                            className="px-5 py-2.5 bg-gray-100 text-gray-900 font-bold rounded-xl hover:bg-gray-200 transition"
                         >
-                            Clear all filters
+                            Clear Filters
                         </button>
-                    )}
+
+                        <Link
+                            to={isAdmin ? '/admin/create' : '/organizer/create'}
+                            className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition shadow-md shadow-blue-600/20"
+                        >
+                            <Plus size={18} />
+                            Create Event
+                        </Link>
+                    </div>
                 </div>
             )}
 
-            {/* 🌟 GRID VIEW */}
+            {/* GRID VIEW */}
             {!loading && filteredEvents.length > 0 && viewMode === 'grid' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                     {filteredEvents.map((event) => {
                         const ticketsSold = getTicketsSold(event);
                         const isPast = isEventDone(event.date, event.time);
                         const disableArchive = !event.isArchived && !isPast && ticketsSold > 0;
-                        
+
                         return (
-                            <div key={event.id} className={`bg-white rounded-2xl border overflow-hidden transition-all duration-300 group flex flex-col ${event.isArchived ? 'border-gray-200 opacity-75 grayscale-[30%]' : 'border-gray-200 shadow-sm hover:shadow-xl'}`}>
-                                
+                            <div
+                                key={event.id}
+                                className={`bg-white rounded-2xl border overflow-hidden transition-all duration-300 group flex flex-col ${
+                                    event.isArchived
+                                        ? 'border-gray-200 opacity-75 grayscale-[20%]'
+                                        : 'border-gray-200 shadow-sm hover:shadow-xl hover:-translate-y-1'
+                                }`}
+                            >
                                 <div className="relative h-48 w-full overflow-hidden bg-gray-100 flex items-center justify-center">
                                     {event.imageUrl || event.image ? (
-                                        <img src={event.imageUrl || event.image || defaultImage} alt={event.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                        <img
+                                            src={event.imageUrl || event.image || defaultImage}
+                                            alt={event.title}
+                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                        />
                                     ) : (
                                         <ImageIcon className="text-gray-300 w-12 h-12" />
                                     )}
-                                    
+
                                     <div className="absolute top-4 left-4 flex gap-2">
                                         {event.isArchived ? (
-                                            <span className="px-3 py-1 rounded-full text-xs font-bold shadow-sm backdrop-blur-md bg-gray-900/80 text-white uppercase tracking-wider">Archived</span>
+                                            <span className="px-3 py-1 rounded-full text-xs font-bold shadow-sm backdrop-blur-md bg-gray-900/80 text-white uppercase tracking-wider">
+                                                Archived
+                                            </span>
                                         ) : isPast ? (
                                             <span className="px-3 py-1 rounded-full text-xs font-bold shadow-sm backdrop-blur-md bg-purple-600/90 text-white flex items-center gap-1.5">
                                                 <CheckCircle size={14} /> Completed
@@ -307,46 +495,59 @@ export default function OrganizerDashboard() {
                                         </div>
 
                                         <hr className="border-gray-100 mb-4" />
-                                        
-                                        <div className="flex items-center justify-between gap-2">
-                                            <div className="flex gap-2">
-                                                <button
-                                                    onClick={() => handleArchive(event)}
-                                                    className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border transition-all text-sm font-bold ${
-                                                        disableArchive ? 'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed' 
-                                                        : event.isArchived ? 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100' 
-                                                        : 'bg-white text-orange-500 border-gray-200 hover:border-orange-200 hover:bg-orange-50'
-                                                    }`}
-                                                    title={disableArchive ? "Cannot archive active events with attendees" : event.isArchived ? "Restore Event" : "Archive Event"}
-                                                >
-                                                    <Archive size={16} strokeWidth={2.5} />
-                                                </button>
 
-                                                {/* 🌟 NEW: View Attendees Button */}
-                                                <button
-                                                    onClick={() => setAttendeesModal({ show: true, eventTitle: event.title, eventId: event.id })}
-                                                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all text-sm font-bold"
-                                                    title="View Attendees"
-                                                >
-                                                    <Eye size={16} strokeWidth={2.5} />
-                                                </button>
-                                            </div>
-                                            
-                                            {isPast ? (
-                                                <button disabled className="flex items-center gap-2 bg-gray-100 text-gray-400 border border-transparent px-4 py-2 rounded-xl text-sm font-bold cursor-not-allowed">
-                                                    <Settings size={16} />
-                                                    Locked
-                                                </button>
-                                            ) : (
-                                                <button 
-                                                    onClick={() => navigate(isAdmin ? '/admin/create' : '/organizer/create', { state: { eventToEdit: event } })}
-                                                    className="flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white border border-transparent px-4 py-2 rounded-xl text-sm font-bold transition shadow-sm"
-                                                >
-                                                    <Settings size={16} />
-                                                    Edit
-                                                </button>
-                                            )}
+                                        {/* RESTORED: "Manage Attendees" layout */}
+                                        <div className="grid grid-cols-2 gap-2 mb-3">
+                                            <button
+                                                onClick={() => setAttendeesModal({ show: true, eventTitle: event.title, eventId: event.id })}
+                                                className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all text-sm font-bold"
+                                                title="View Attendees"
+                                            >
+                                                <Eye size={16} strokeWidth={2.5} />
+                                                View
+                                            </button>
+
+                                            <button
+                                                onClick={() => navigate(isAdmin ? '/admin/create' : '/organizer/create', { state: { eventToEdit: event } })}
+                                                disabled={isPast}
+                                                className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-bold transition ${
+                                                    isPast
+                                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                                        : 'bg-gray-900 hover:bg-gray-800 text-white shadow-sm'
+                                                }`}
+                                                title={isPast ? 'Locked' : 'Edit Event'}
+                                            >
+                                                <Settings size={16} />
+                                                {isPast ? 'Locked' : 'Edit'}
+                                            </button>
                                         </div>
+
+                                        <div className="flex items-center justify-between gap-2">
+                                            <button
+                                                onClick={() => setAttendeesModal({ show: true, eventTitle: event.title, eventId: event.id })}
+                                                className="flex items-center gap-2 text-blue-600 hover:text-blue-700 transition text-sm font-bold"
+                                            >
+                                                Manage attendees
+                                                <ArrowUpRight size={15} />
+                                            </button>
+
+                                            <button
+                                                onClick={() => handleArchive(event)}
+                                                disabled={disableArchive}
+                                                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border transition-all text-sm font-bold ${
+                                                    disableArchive
+                                                        ? 'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed'
+                                                        : event.isArchived
+                                                            ? 'bg-green-50 text-green-600 border-green-200 hover:bg-green-100'
+                                                            : 'bg-white text-orange-500 border-gray-200 hover:border-orange-200 hover:bg-orange-50'
+                                                }`}
+                                                title={disableArchive ? "Cannot archive active events with attendees" : event.isArchived ? "Restore Event" : "Archive Event"}
+                                            >
+                                                <Archive size={16} strokeWidth={2.5} />
+                                                {event.isArchived ? 'Restore' : 'Archive'}
+                                            </button>
+                                        </div>
+
                                     </div>
                                 </div>
                             </div>
@@ -355,11 +556,11 @@ export default function OrganizerDashboard() {
                 </div>
             )}
 
-            {/* 🌟 LIST VIEW */}
+            {/* LIST VIEW */}
             {!loading && filteredEvents.length > 0 && viewMode === 'list' && (
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left min-w-[900px]">
+                        <table className="w-full text-left min-w-[1000px]">
                             <thead className="bg-gray-50 border-b border-gray-200">
                                 <tr>
                                     <th className="p-4 font-semibold text-gray-600">Event Details</th>
@@ -379,14 +580,14 @@ export default function OrganizerDashboard() {
                                             <td className="p-4">
                                                 <p className={`font-bold text-base line-clamp-1 ${event.isArchived ? 'text-gray-500' : 'text-gray-900'}`}>{event.title}</p>
                                                 <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
-                                                    <span className="flex items-center gap-1"><Calendar size={12}/> {formatDate(event.date)}</span>
-                                                    <span className="flex items-center gap-1"><MapPin size={12}/> {event.location}</span>
+                                                    <span className="flex items-center gap-1"><Calendar size={12} /> {formatDate(event.date)}</span>
+                                                    <span className="flex items-center gap-1"><MapPin size={12} /> {event.location}</span>
                                                 </div>
                                             </td>
                                             <td className="p-4">
                                                 <div className="flex flex-col gap-1">
                                                     <span className="text-xs font-bold text-gray-700 flex items-center gap-1">
-                                                        <Ticket size={12} className="text-blue-500"/> {ticketsSold} / {event.capacity || '∞'} Sold
+                                                        <Ticket size={12} className="text-blue-500" /> {ticketsSold} / {event.capacity || '∞'} Sold
                                                     </span>
                                                     <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
                                                         <TrendingUp size={12} /> {getRevenue(event)} Rev
@@ -406,10 +607,12 @@ export default function OrganizerDashboard() {
                                                 <div className="flex items-center justify-end gap-2">
                                                     <button
                                                         onClick={() => setAttendeesModal({ show: true, eventTitle: event.title, eventId: event.id })}
-                                                        className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition cursor-pointer" title="View Attendees"
+                                                        className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition cursor-pointer"
+                                                        title="View Attendees"
                                                     >
                                                         <Eye size={16} />
                                                     </button>
+
                                                     <button
                                                         onClick={() => handleArchive(event)}
                                                         disabled={disableArchive}
@@ -418,7 +621,7 @@ export default function OrganizerDashboard() {
                                                     >
                                                         <Archive size={16} />
                                                     </button>
-                                                    
+
                                                     {isPast ? (
                                                         <button disabled className="p-2 text-gray-400 bg-gray-100 rounded-lg cursor-not-allowed" title="Locked">
                                                             <Settings size={16} />
@@ -426,7 +629,8 @@ export default function OrganizerDashboard() {
                                                     ) : (
                                                         <button
                                                             onClick={() => navigate(isAdmin ? '/admin/create' : '/organizer/create', { state: { eventToEdit: event } })}
-                                                            className="p-2 text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition cursor-pointer" title="Edit Event"
+                                                            className="p-2 text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition cursor-pointer"
+                                                            title="Edit Event"
                                                         >
                                                             <Settings size={16} />
                                                         </button>
@@ -442,17 +646,28 @@ export default function OrganizerDashboard() {
                 </div>
             )}
 
-            {/* 🌟 NEW: VIEW ATTENDEES MODAL */}
+            {/* FLOATING CREATE BUTTON */}
+            <Link
+                to={isAdmin ? '/admin/create' : '/organizer/create'}
+                className="sm:hidden fixed bottom-5 right-5 z-40 flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-full font-bold shadow-xl shadow-blue-600/30 transition"
+            >
+                <Plus size={18} strokeWidth={2.5} />
+                Create Event
+            </Link>
+
+            {/* VIEW ATTENDEES MODAL */}
             {attendeesModal.show && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
                     <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[80vh] animate-in zoom-in duration-200">
-                        
                         <div className="bg-slate-900 px-6 py-4 flex justify-between items-center">
                             <div>
                                 <h3 className="text-lg font-bold text-white">Attendee List</h3>
                                 <p className="text-slate-400 text-sm truncate max-w-md">{attendeesModal.eventTitle}</p>
                             </div>
-                            <button onClick={() => setAttendeesModal({ show: false, eventTitle: '', eventId: null })} className="text-slate-400 hover:text-white transition">
+                            <button
+                                onClick={() => setAttendeesModal({ show: false, eventTitle: '', eventId: null })}
+                                className="text-slate-400 hover:text-white transition"
+                            >
                                 <X size={24} />
                             </button>
                         </div>
@@ -495,9 +710,9 @@ export default function OrganizerDashboard() {
                                 </div>
                             )}
                         </div>
-                        
+
                         <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-end">
-                            <button 
+                            <button
                                 onClick={() => setAttendeesModal({ show: false, eventTitle: '', eventId: null })}
                                 className="px-6 py-2 bg-slate-900 text-white font-bold rounded-lg hover:bg-slate-800 transition cursor-pointer"
                             >
@@ -517,7 +732,10 @@ export default function OrganizerDashboard() {
                         </h2>
                         <p className="text-gray-600 font-medium mb-6">{modal.message}</p>
                         <div className="flex justify-end">
-                            <button onClick={() => setModal({ show: false, type: '', title: '', message: '' })} className="px-5 py-2.5 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 transition shadow-sm">
+                            <button
+                                onClick={() => setModal({ show: false, type: '', title: '', message: '' })}
+                                className="px-5 py-2.5 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 transition shadow-sm"
+                            >
                                 Got it
                             </button>
                         </div>
