@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common'; // 🌟 Added BadRequestException
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Attendee } from './entities/attendee.entity';
@@ -16,13 +16,27 @@ export class AttendeesService {
     this.transporter = nodemailer.createTransport({
       service: 'gmail', 
       auth: {
-        user: 'rojanegacu21@gmail.com', 
-        pass: 'frbi wfve gljn wukw' 
+        // 🌟 FIX 1: Updated the login email
+        user: 'harmony.events9@gmail.com', 
+        // 🚨 IMPORTANT: You must generate a new Google App Password for this specific email account!
+        pass: 'opod ndgn tuuy ogjr' 
       },
     });
   }
 
   async create(createAttendeeDto: CreateAttendeeDto) {
+    // 🌟 FIX 4: DUPLICATE REGISTRATION BLOCKER
+    const existingTicket = await this.attendeeRepository.findOne({
+      where: { 
+        email: createAttendeeDto.email, 
+        eventId: createAttendeeDto.eventId 
+      }
+    });
+
+    if (existingTicket && existingTicket.status !== 'Cancelled') {
+      throw new BadRequestException('You are already registered for this event!');
+    }
+
     const randomId = Math.floor(1000 + Math.random() * 9000);
     const ticketId = `TIX-${randomId}`;
 
@@ -38,7 +52,8 @@ export class AttendeesService {
       const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${ticketId}`;
 
       const mailOptions = {
-        from: '"Harmony Events" <rojanegacu21@gmail.com>',
+        // 🌟 FIX 2: Updated the "From" address that the user sees in their inbox
+        from: '"Harmony Events" <harmony.events9@gmail.com>',
         to: savedAttendee.email,
         subject: `🎫 Your Ticket Confirmed: ${ticketId}`,
         html: `
@@ -85,7 +100,6 @@ export class AttendeesService {
       where: { email, eventId }
     });
     
-    // 🌟 FIX: It now checks if they exist AND that their status is NOT Cancelled!
     const isActuallyGoing = existingAttendee ? existingAttendee.status !== 'Cancelled' : false;
     
     return { 
@@ -94,36 +108,31 @@ export class AttendeesService {
     };
   }
 
-  // 🌟 COMPLETELY REWRITTEN SCANNER LOGIC
   async scanTicket(rawTicketId: string) {
-    // 1. Clean the input to remove hidden spaces/newlines from the scanner hardware
     const cleanTicketId = rawTicketId.trim();
 
     const attendee = await this.attendeeRepository.findOne({ 
       where: { ticketId: cleanTicketId } 
     });
 
-    // 2. Clear error if it genuinely doesn't exist
     if (!attendee) {
       throw new NotFoundException('Ticket not found in the database.');
     }
 
-    // 3. Prevent double-scanning
     if (attendee.status === 'Checked In') {
       throw new BadRequestException('This ticket has already been scanned!');
     }
 
-    // 4. Prevent cancelled tickets from entering
     if (attendee.status === 'Cancelled') {
       throw new BadRequestException('This ticket was cancelled.');
     }
 
-    // 5. If it passes all checks (Pending, Confirmed, etc.), Check them in!
     attendee.status = 'Checked In';
+    attendee.checkedInAt = new Date(); 
+    
     return await this.attendeeRepository.save(attendee);
   }
 
-  // 🌟 NEW: The function that updates status in MySQL
   async updateStatus(ticketId: string, status: string) {
     const attendee = await this.attendeeRepository.findOne({ where: { ticketId } });
     
@@ -132,6 +141,13 @@ export class AttendeesService {
     }
 
     attendee.status = status;
+    
+    if (status === 'Checked In') {
+      attendee.checkedInAt = new Date();
+    } else if (status === 'Pending' || status === 'Cancelled') {
+      attendee.checkedInAt = null;
+    }
+
     return await this.attendeeRepository.save(attendee);
   }
 
@@ -139,6 +155,7 @@ export class AttendeesService {
     const attendee = await this.attendeeRepository.findOneBy({ id });
     if (attendee) {
       attendee.status = 'Cancelled';
+      attendee.checkedInAt = null; // Clear check-in if voided
       return this.attendeeRepository.save(attendee);
     }
     return null;

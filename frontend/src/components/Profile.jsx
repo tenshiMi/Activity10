@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { api } from '../lib/api';
 import { Link, useNavigate } from 'react-router-dom';
 import {
@@ -26,14 +26,7 @@ import {
   RefreshCcw,
   Check,
   XCircle,
-  Bell,
-  Moon,
-  Trash2,
-  Download,
-  Shield,
-  ChevronRight,
-  BadgeCheck,
-  Settings2
+  BadgeCheck
 } from 'lucide-react';
 
 export default function Profile() {
@@ -42,19 +35,12 @@ export default function Profile() {
   const localUser = JSON.parse(localStorage.getItem('user') || '{}');
 
   const normalizeUser = (rawUser = {}) => ({
-    ...rawUser,
-    preferences: {
-      eventReminders:
-        rawUser.preferences?.eventReminders ?? rawUser.eventReminders ?? true,
-      bookingUpdates:
-        rawUser.preferences?.bookingUpdates ?? rawUser.bookingUpdates ?? true,
-      marketingEmails:
-        rawUser.preferences?.marketingEmails ?? rawUser.marketingEmails ?? false,
-      darkMode: rawUser.preferences?.darkMode ?? rawUser.darkMode ?? false
-    }
+    ...rawUser
   });
 
   const [user, setUser] = useState(normalizeUser(localUser));
+
+  const isOrganizer = user?.role === 'Organizer' || user?.role === 'Admin';
 
   const [formData, setFormData] = useState({
     name: localUser.name || '',
@@ -62,13 +48,7 @@ export default function Profile() {
     email: localUser.email || '',
     currentPassword: '',
     newPassword: '',
-    avatarUrl: localUser.avatarUrl || '',
-    preferences: {
-      eventReminders: localUser.preferences?.eventReminders ?? true,
-      bookingUpdates: localUser.preferences?.bookingUpdates ?? true,
-      marketingEmails: localUser.preferences?.marketingEmails ?? false,
-      darkMode: localUser.preferences?.darkMode ?? false
-    }
+    avatarUrl: localUser.avatarUrl || ''
   });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -108,16 +88,6 @@ export default function Profile() {
     formData.name || user.name || 'User'
   )}&backgroundColor=2563eb`;
 
-  const normalizedOriginalPreferences = useMemo(
-    () => ({
-      eventReminders: user.preferences?.eventReminders ?? true,
-      bookingUpdates: user.preferences?.bookingUpdates ?? true,
-      marketingEmails: user.preferences?.marketingEmails ?? false,
-      darkMode: user.preferences?.darkMode ?? false
-    }),
-    [user]
-  );
-
   const isEmailChanged = (formData.email || '').trim().toLowerCase() !== (user.email || '').trim().toLowerCase();
 
   const isDirty =
@@ -125,8 +95,7 @@ export default function Profile() {
     formData.username !== (user.username || '') ||
     formData.email !== (user.email || '') ||
     formData.newPassword !== '' ||
-    formData.avatarUrl !== (user.avatarUrl || '') ||
-    JSON.stringify(formData.preferences) !== JSON.stringify(normalizedOriginalPreferences);
+    formData.avatarUrl !== (user.avatarUrl || '');
 
   const calculateCompletion = () => {
     let score = 0;
@@ -274,13 +243,7 @@ export default function Profile() {
         name: refreshedUser.name || '',
         username: refreshedUser.username || '',
         email: refreshedUser.email || '',
-        avatarUrl: refreshedUser.avatarUrl || '',
-        preferences: {
-          eventReminders: refreshedUser.preferences?.eventReminders ?? true,
-          bookingUpdates: refreshedUser.preferences?.bookingUpdates ?? true,
-          marketingEmails: refreshedUser.preferences?.marketingEmails ?? false,
-          darkMode: refreshedUser.preferences?.darkMode ?? false
-        }
+        avatarUrl: refreshedUser.avatarUrl || ''
       }));
 
       const myAllTickets = attendeesData.filter(
@@ -367,16 +330,6 @@ export default function Profile() {
     if (status.message) setStatus({ type: '', message: '' });
   };
 
-  const handleTogglePreference = (key) => {
-    setFormData((prev) => ({
-      ...prev,
-      preferences: {
-        ...prev.preferences,
-        [key]: !prev.preferences[key]
-      }
-    }));
-  };
-
   const resetForm = () => {
     setFormData({
       name: user.name || '',
@@ -384,13 +337,7 @@ export default function Profile() {
       email: user.email || '',
       currentPassword: '',
       newPassword: '',
-      avatarUrl: user.avatarUrl || '',
-      preferences: {
-        eventReminders: user.preferences?.eventReminders ?? true,
-        bookingUpdates: user.preferences?.bookingUpdates ?? true,
-        marketingEmails: user.preferences?.marketingEmails ?? false,
-        darkMode: user.preferences?.darkMode ?? false
-      }
+      avatarUrl: user.avatarUrl || ''
     });
     setVerifyModal({ show: false, code: '', isVerifying: false });
     setUsernameStatus('idle');
@@ -431,11 +378,7 @@ export default function Profile() {
     const payload = {
       name: formData.name,
       username: (formData.username || '').replace('@', '').trim(),
-      avatarUrl: formData.avatarUrl || null,
-      eventReminders: formData.preferences.eventReminders,
-      bookingUpdates: formData.preferences.bookingUpdates,
-      marketingEmails: formData.preferences.marketingEmails,
-      darkMode: formData.preferences.darkMode
+      avatarUrl: formData.avatarUrl || null
     };
 
     if (formData.newPassword.trim() !== '') {
@@ -457,8 +400,7 @@ export default function Profile() {
 
       const updatedUser = updateLocalUser({
         ...user,
-        ...updatedUserFromBackend,
-        preferences: updatedUserFromBackend.preferences
+        ...updatedUserFromBackend
       });
 
       setFormData((prev) => ({
@@ -468,13 +410,7 @@ export default function Profile() {
         name: updatedUser.name || '',
         username: updatedUser.username || '',
         email: updatedUser.email || '',
-        avatarUrl: updatedUser.avatarUrl || '',
-        preferences: {
-          eventReminders: updatedUser.preferences?.eventReminders ?? true,
-          bookingUpdates: updatedUser.preferences?.bookingUpdates ?? true,
-          marketingEmails: updatedUser.preferences?.marketingEmails ?? false,
-          darkMode: updatedUser.preferences?.darkMode ?? false
-        }
+        avatarUrl: updatedUser.avatarUrl || ''
       }));
 
       setVerifyModal({ show: false, code: '', isVerifying: false });
@@ -606,49 +542,6 @@ export default function Profile() {
     }
   };
 
-  const handleDownloadMyData = () => {
-    const exportData = {
-      profile: {
-        name: user.name || '',
-        username: user.username || '',
-        email: user.email || '',
-        role: user.role || 'Attendee',
-        createdAt: user.createdAt || null,
-        updatedAt: user.updatedAt || null
-      },
-      preferences: formData.preferences,
-      stats: userStats,
-      exportedAt: new Date().toISOString()
-    };
-
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], {
-      type: 'application/json'
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'harmony-events-account-data.json';
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleDeactivateAccount = () => {
-    window.alert('This action is not connected yet to a backend deactivation endpoint.');
-  };
-
-  const handleDeleteAccount = () => {
-    window.alert('This action is not connected yet to a backend delete endpoint.');
-  };
-
-  const handleManualRefresh = async () => {
-    await refreshProfileData();
-    setStatus({
-      type: 'success',
-      message: 'Profile data refreshed successfully.'
-    });
-    setTimeout(() => setStatus({ type: '', message: '' }), 3000);
-  };
-
   const InfoRow = ({ icon, label, value, badge, valueClass = 'text-slate-900' }) => (
     <li className="flex items-center justify-between gap-4">
       <div className="flex items-center gap-2.5 text-slate-500 min-w-0">
@@ -665,49 +558,13 @@ export default function Profile() {
     </li>
   );
 
-  const ToggleRow = ({ icon, title, description, checked, onChange }) => (
-    <div className="flex items-start justify-between gap-4 py-5 border-b border-slate-100 last:border-b-0">
-      <div className="flex items-start gap-3">
-        <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-600 shrink-0">
-          {icon}
-        </div>
-        <div>
-          <h4 className="text-sm font-black text-slate-900">{title}</h4>
-          <p className="text-xs text-slate-500 font-medium mt-1 leading-relaxed max-w-md">
-            {description}
-          </p>
-        </div>
-      </div>
-
-      <button
-        type="button"
-        onClick={onChange}
-        className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors shrink-0 ${
-          checked ? 'bg-blue-600' : 'bg-slate-300'
-        }`}
-      >
-        <span
-          className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
-            checked ? 'translate-x-6' : 'translate-x-1'
-          }`}
-        />
-      </button>
-    </div>
-  );
-
   return (
     <div className="min-h-screen bg-slate-50/50 pb-20 font-sans">
       <div className="max-w-[1280px] mx-auto pt-8 px-4 sm:px-6 lg:px-8 animate-in fade-in duration-500">
-        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-slate-400 mb-4">
-          <span>Dashboard</span>
-          <ChevronRight size={14} />
-          <span>Settings</span>
-          <ChevronRight size={14} />
-          <span className="text-blue-600">Account</span>
-        </div>
-
+        
+        {/* 🌟 FIX: Dynamic Routing for the Back Button */}
         <Link
-          to="/"
+          to={isOrganizer ? "/organizer" : "/"}
           className="inline-flex items-center gap-2 text-slate-500 hover:text-blue-600 font-bold text-sm transition-colors mb-6 group w-fit"
         >
           <div className="bg-white border border-slate-200 p-1.5 rounded-lg group-hover:border-blue-200 group-hover:bg-blue-50 transition-colors shadow-sm">
@@ -738,7 +595,7 @@ export default function Profile() {
             </div>
 
             <p className="text-slate-500 font-medium text-base">
-              Manage your profile information, security, preferences, and account activity.
+              Manage your profile information, security, and account activity.
             </p>
           </div>
 
@@ -893,17 +750,21 @@ export default function Profile() {
                     }
                   />
 
-                  <InfoRow
-                    icon={<CheckCircle2 size={16} />}
-                    label="Events Joined"
-                    value={userStats.eventsJoined}
-                  />
+                  {!isOrganizer && (
+                    <>
+                      <InfoRow
+                        icon={<CheckCircle2 size={16} />}
+                        label="Events Joined"
+                        value={userStats.eventsJoined}
+                      />
 
-                  <InfoRow
-                    icon={<Ticket size={16} />}
-                    label="Tickets Booked"
-                    value={userStats.ticketsBooked}
-                  />
+                      <InfoRow
+                        icon={<Ticket size={16} />}
+                        label="Tickets Booked"
+                        value={userStats.ticketsBooked}
+                      />
+                    </>
+                  )}
 
                   <InfoRow
                     icon={<Calendar size={16} />}
@@ -1204,52 +1065,6 @@ export default function Profile() {
             <div className="bg-white p-8 md:p-10 rounded-[2rem] shadow-lg shadow-slate-200/50 border border-slate-100">
               <div className="mb-6 border-b border-slate-100 pb-6">
                 <h3 className="text-xl font-black text-slate-950 flex items-center gap-3 mb-1">
-                  <Settings2 size={20} className="text-indigo-600" />
-                  Preferences
-                </h3>
-                <p className="text-sm text-slate-500 font-medium ml-8">
-                  Choose how Harmony Events communicates with you and manages your account experience.
-                </p>
-              </div>
-
-              <div>
-                <ToggleRow
-                  icon={<Bell size={18} />}
-                  title="Event Reminders"
-                  description="Receive reminders before your registered events begin."
-                  checked={formData.preferences.eventReminders}
-                  onChange={() => handleTogglePreference('eventReminders')}
-                />
-
-                <ToggleRow
-                  icon={<Ticket size={18} />}
-                  title="Booking Updates"
-                  description="Get notified about booking confirmations, changes, and important event updates."
-                  checked={formData.preferences.bookingUpdates}
-                  onChange={() => handleTogglePreference('bookingUpdates')}
-                />
-
-                <ToggleRow
-                  icon={<Mail size={18} />}
-                  title="Marketing Emails"
-                  description="Receive promotional announcements, featured events, and curated recommendations."
-                  checked={formData.preferences.marketingEmails}
-                  onChange={() => handleTogglePreference('marketingEmails')}
-                />
-
-                <ToggleRow
-                  icon={<Moon size={18} />}
-                  title="Dark Mode Preference"
-                  description="Save your preferred appearance setting for future updates."
-                  checked={formData.preferences.darkMode}
-                  onChange={() => handleTogglePreference('darkMode')}
-                />
-              </div>
-            </div>
-
-            <div className="bg-white p-8 md:p-10 rounded-[2rem] shadow-lg shadow-slate-200/50 border border-slate-100">
-              <div className="mb-6 border-b border-slate-100 pb-6">
-                <h3 className="text-xl font-black text-slate-950 flex items-center gap-3 mb-1">
                   <Monitor size={20} className="text-purple-600" />
                   Security & Sessions
                 </h3>
@@ -1319,86 +1134,6 @@ export default function Profile() {
                 <LogOut size={16} />
                 Sign out of all devices
               </button>
-            </div>
-
-            <div className="bg-white p-8 md:p-10 rounded-[2rem] shadow-lg shadow-slate-200/50 border border-slate-100">
-              <div className="mb-6 border-b border-slate-100 pb-6">
-                <h3 className="text-xl font-black text-slate-950 flex items-center gap-3 mb-1">
-                  <Shield size={20} className="text-slate-700" />
-                  Account Tools
-                </h3>
-                <p className="text-sm text-slate-500 font-medium ml-8">
-                  Export your account information or manage additional account actions.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <button
-                  type="button"
-                  onClick={handleDownloadMyData}
-                  className="w-full py-4 px-5 rounded-xl border border-slate-200 text-slate-700 font-black text-sm hover:bg-slate-50 transition-colors flex items-center justify-center gap-2"
-                >
-                  <Download size={16} />
-                  Download My Data
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleManualRefresh}
-                  className="w-full py-4 px-5 rounded-xl border border-slate-200 text-slate-700 font-black text-sm hover:bg-slate-50 transition-colors flex items-center justify-center gap-2"
-                >
-                  {isRefreshing ? <Loader2 size={16} className="animate-spin" /> : <RefreshCcw size={16} />}
-                  Refresh Account Data
-                </button>
-              </div>
-            </div>
-
-            <div className="bg-white p-8 md:p-10 rounded-[2rem] shadow-lg shadow-slate-200/50 border border-rose-200">
-              <div className="mb-6 border-b border-rose-100 pb-6">
-                <h3 className="text-xl font-black text-rose-700 flex items-center gap-3 mb-1">
-                  <Trash2 size={20} />
-                  Danger Zone
-                </h3>
-                <p className="text-sm text-slate-500 font-medium ml-8">
-                  These actions are sensitive and may affect your account access or stored data.
-                </p>
-              </div>
-
-              <div className="space-y-4">
-                <div className="rounded-2xl border border-slate-200 p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div>
-                    <h4 className="font-black text-slate-900">Deactivate Account</h4>
-                    <p className="text-sm text-slate-500 font-medium mt-1">
-                      Temporarily disable your account without permanently deleting your data.
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleDeactivateAccount}
-                    className="px-5 py-3 rounded-xl border border-amber-200 text-amber-700 bg-amber-50 font-black text-sm hover:bg-amber-100 transition-colors"
-                  >
-                    Deactivate
-                  </button>
-                </div>
-
-                <div className="rounded-2xl border border-rose-200 p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-rose-50/50">
-                  <div>
-                    <h4 className="font-black text-rose-700">Delete Account</h4>
-                    <p className="text-sm text-slate-500 font-medium mt-1">
-                      Permanently remove your account and associated data. This action cannot be undone.
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleDeleteAccount}
-                    className="px-5 py-3 rounded-xl border border-rose-200 text-white bg-rose-600 font-black text-sm hover:bg-rose-700 transition-colors"
-                  >
-                    Delete Account
-                  </button>
-                </div>
-              </div>
             </div>
           </form>
         </div>

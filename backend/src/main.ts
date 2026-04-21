@@ -9,11 +9,12 @@ import { join } from 'path';
 dotenv.config();
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // 🌟 FIX: Disable the default 100kb body parser so our 50mb rule actually works!
+  const app = await NestFactory.create(AppModule, { bodyParser: false });
 
   app.enableCors({ origin: true, credentials: true });
 
-  // Increase the JSON payload limit to 50mb so profile pictures don't crash
+  // Now the JSON payload limit of 50mb will successfully allow profile pictures
   app.use(json({ limit: '50mb' }));
   app.use(urlencoded({ extended: true, limit: '50mb' }));
 
@@ -52,4 +53,3 @@ async function bootstrap() {
 }
 
 bootstrap();
-

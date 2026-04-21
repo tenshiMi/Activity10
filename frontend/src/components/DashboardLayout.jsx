@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, PlusCircle, Users, ScanLine, LogOut, Calendar, User } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, Users, ScanLine, LogOut, User } from 'lucide-react';
 import NotificationBell from './NotificationBell'; 
+import HarmonyLogo from './HarmonyLogo'; // 🌟 Added Logo Import
 
 export default function DashboardLayout() {
   const location = useLocation();
@@ -22,9 +23,28 @@ export default function DashboardLayout() {
     { name: 'Scan Tickets', path: '/organizer/scan', icon: ScanLine },
   ];
 
+  // Get the saved avatar or generate the initials avatar
+  const displayAvatar = user?.avatarUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${user?.name || 'User'}&backgroundColor=2563eb`;
+
   return (
     <div className="min-h-screen bg-gray-50/50 flex flex-col font-sans">
       
+      {/* 🌟 INJECTED SLOW 3D FLIP CSS for Logo */}
+      <style>{`
+        @keyframes slow-flip {
+          0%, 15% { transform: rotateY(0deg); }
+          45%, 65% { transform: rotateY(180deg); }
+          95%, 100% { transform: rotateY(360deg); }
+        }
+        .perspective-1000 { perspective: 1000px; }
+        .preserve-3d { transform-style: preserve-3d; }
+        .backface-hidden { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+        .rotate-y-180 { transform: rotateY(180deg); }
+        .animate-slow-flip {
+          animation: slow-flip 10s cubic-bezier(0.4, 0.0, 0.2, 1) infinite;
+        }
+      `}</style>
+
       {/* 🌟 PREMIUM ORGANIZER NAVBAR WITH GLASSMORPHISM */}
       <header className="bg-white/80 backdrop-blur-md border-b border-gray-200/80 sticky top-0 z-50 shadow-sm">
         <div className="max-w-[1600px] mx-auto px-6">
@@ -32,10 +52,17 @@ export default function DashboardLayout() {
             
             {/* Logo Section */}
             <div className="flex items-center gap-12">
-              <Link to="/" className="flex items-center gap-3 group">
-                <div className="w-11 h-11 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-md shadow-blue-600/20 group-hover:shadow-blue-600/40 transition-all duration-300">
-                  <Calendar className="text-white w-6 h-6" strokeWidth={2.5} />
+              <Link to="/" className="flex items-center gap-3 group perspective-1000">
+                {/* 🌟 Premium Animated Logo Injection */}
+                <div className="w-11 h-11 relative animate-slow-flip preserve-3d group-hover:scale-110 transition-transform duration-300">
+                  <div className="absolute inset-0 w-full h-full backface-hidden flex items-center justify-center">
+                    <HarmonyLogo className="w-11 h-11 drop-shadow-md" />
+                  </div>
+                  <div className="absolute inset-0 w-full h-full backface-hidden flex items-center justify-center rotate-y-180">
+                    <HarmonyLogo className="w-11 h-11 drop-shadow-md" />
+                  </div>
                 </div>
+                
                 <div>
                   <span className="block font-extrabold text-xl text-gray-900 leading-none tracking-tight">Harmony Events</span>
                   <span className="block text-[10px] text-gray-500 font-bold tracking-widest mt-0.5">PLATFORM</span>
@@ -74,15 +101,19 @@ export default function DashboardLayout() {
               <div className="h-8 w-px bg-gray-200 mx-2"></div>
 
               {/* Polished Profile Chip */}
-              <div className="flex items-center gap-3 bg-white border border-gray-200 hover:border-gray-300 transition-colors py-1.5 pl-1.5 pr-5 rounded-full shadow-sm cursor-default">
-                <div className="w-9 h-9 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center">
-                  <User size={18} strokeWidth={2.5} />
+              <Link 
+                to="/profile" 
+                className="flex items-center gap-3 bg-white border border-gray-200 hover:border-blue-200 hover:bg-blue-50 transition-all py-1.5 pl-1.5 pr-5 rounded-full shadow-sm cursor-pointer active:scale-95 group"
+                title="Edit Profile"
+              >
+                <div className="w-9 h-9 rounded-full overflow-hidden border border-blue-100 shadow-inner shrink-0 group-hover:ring-2 group-hover:ring-blue-500 transition-all">
+                  <img src={displayAvatar} alt={user?.name || 'User'} className="w-full h-full object-cover" />
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-sm font-extrabold text-gray-900 leading-none">{user?.name || 'Tenshi Amara'}</span>
+                  <span className="text-sm font-extrabold text-gray-900 leading-none group-hover:text-blue-700 transition-colors">{user?.name || 'User'}</span>
                   <span className="text-[10px] font-bold text-blue-600 uppercase mt-0.5 tracking-wider">{user?.role || 'ORGANIZER'}</span>
                 </div>
-              </div>
+              </Link>
 
               <button 
                 onClick={() => setShowLogoutModal(true)} 

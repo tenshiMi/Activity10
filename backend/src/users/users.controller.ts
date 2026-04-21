@@ -84,14 +84,14 @@ export class UsersController {
   @Patch(':id')
   @ApiOperation({ summary: 'Update a user by ID (Partial Update)' })
   @ApiResponse({ status: 200, description: 'User updated successfully' })
-  updatePartial(@Param('id') id: string, @Body() updateData: UpdateUserDto) {
+  updatePartial(@Param('id') id: string, @Body() updateData: any) { // 🌟 FIX: 'any' prevents passwords/avatars from being stripped!
     return this.usersService.update(+id, updateData);
   }
 
   @Put(':id')
   @ApiOperation({ summary: 'Update a user by ID (Full Update)' })
   @ApiResponse({ status: 200, description: 'User updated successfully' })
-  updateFull(@Param('id') id: string, @Body() updateData: UpdateUserDto) {
+  updateFull(@Param('id') id: string, @Body() updateData: any) { // 🌟 FIX: 'any' prevents passwords/avatars from being stripped!
     return this.usersService.update(+id, updateData);
   }
 

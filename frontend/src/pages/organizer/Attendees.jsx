@@ -34,7 +34,6 @@ export default function Attendees() {
     setToast({ show: true, type, message });
   };
 
-  // 🌟 FUNCTIONAL: Loads real data from the database
   const loadData = useCallback(async (silent = false) => {
     try {
       if (!silent) setLoading(true);
@@ -74,7 +73,6 @@ export default function Attendees() {
     loadData();
   }, [loadData]);
 
-  // 🌟 REAL-TIME: Silent background polling every 15 seconds to catch live check-ins
   useEffect(() => {
     const interval = setInterval(() => {
       loadData(true);
@@ -106,7 +104,7 @@ export default function Attendees() {
     if (!value) return '—';
     const d = new Date(value);
     if (isNaN(d.getTime())) return '—';
-    return d.toLocaleString([], {
+    return d.toLocaleString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
@@ -115,18 +113,54 @@ export default function Attendees() {
     });
   };
 
+  const formatDateOnly = (value) => {
+    if (!value) return '—';
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
   const formatTimeOnly = (value) => {
     if (!value) return '—';
     const d = new Date(value);
     if (isNaN(d.getTime())) return '—';
-    return d.toLocaleTimeString([], {
+    return d.toLocaleTimeString('en-US', {
       hour: 'numeric',
       minute: '2-digit'
     });
   };
 
-  const eventAttendees = attendees.filter(a => String(a.eventId) === String(selectedEventId));
+  const getRegistrationDate = (person) => person.createdAt || person.registeredAt || person.created_at || person.registrationDate;
+  
+  const getCheckInDate = (person) => {
+    if (person.checkedInAt || person.checkInTime || person.checked_in_at) {
+      return person.checkedInAt || person.checkInTime || person.checked_in_at;
+    }
+    if (person.status === 'Checked In') {
+      return person.updatedAt || person.updated_at;
+    }
+    return null;
+  };
 
+  const eventAttendees = useMemo(() => {
+    const rawAttendees = attendees.filter(a => String(a.eventId) === String(selectedEventId));
+    const latestTicketsMap = new Map();
+    
+    rawAttendees.forEach(ticket => {
+      const existing = latestTicketsMap.get(ticket.email);
+      if (!existing || ticket.id > existing.id) {
+        latestTicketsMap.set(ticket.email, ticket);
+      }
+    });
+    
+    return Array.from(latestTicketsMap.values());
+  }, [attendees, selectedEventId]);
+
+  // 🌟 SMART LOGIC: Dynamically calculates if they are a "No Show" based on the clock!
   const getDisplayStatus = useCallback((person) => {
     if (person.status === 'Cancelled') return 'Cancelled';
     if (person.status === 'Checked In') return 'Checked In';
@@ -135,8 +169,9 @@ export default function Attendees() {
     if (!eventStart) return person.status || 'Pending';
 
     const now = new Date();
-    const lateThreshold = new Date(eventStart.getTime() + 30 * 60 * 1000);   // 30 mins after start
-    const noShowThreshold = new Date(eventStart.getTime() + 180 * 60 * 1000); // 3 hrs after start
+    // Late = 30 mins after start. No Show = 4 hours after start.
+    const lateThreshold = new Date(eventStart.getTime() + 30 * 60 * 1000);   
+    const noShowThreshold = new Date(eventStart.getTime() + 4 * 60 * 60 * 1000); 
 
     if ((person.status === 'Pending' || !person.status) && now >= noShowThreshold) return 'No Show';
     if ((person.status === 'Pending' || !person.status) && now >= lateThreshold) return 'Late';
@@ -168,7 +203,7 @@ export default function Attendees() {
   const lateCount = activeAttendees.filter(a => getDisplayStatus(a) === 'Late').length;
   const noShowCount = activeAttendees.filter(a => getDisplayStatus(a) === 'No Show').length;
 
-  const checkedInAttendees = activeAttendees.filter(a => a.status === 'Checked In' && a.checkedInAt);
+  const checkedInAttendees = activeAttendees.filter(a => a.status === 'Checked In' && getCheckInDate(a));
 
   const averageArrivalText = useMemo(() => {
     if (!checkedInAttendees.length || !selectedEvent) return '—';
@@ -177,15 +212,25 @@ export default function Attendees() {
     if (!eventStart) return '—';
 
     const avgMs =
-      checkedInAttendees.reduce((sum, a) => sum + new Date(a.checkedInAt).getTime(), 0) /
+      checkedInAttendees.reduce((sum, a) => sum + new Date(getCheckInDate(a)).getTime(), 0) /
       checkedInAttendees.length;
 
     const avgDate = new Date(avgMs);
     const diffMinutes = Math.round((avgDate.getTime() - eventStart.getTime()) / 60000);
+    const absMinutes = Math.abs(diffMinutes);
+
+    let timeString = '';
+    if (absMinutes >= 1440) {
+      timeString = `${Math.round(absMinutes / 1440)} days`;
+    } else if (absMinutes >= 60) {
+      timeString = `${Math.round(absMinutes / 60)} hours`;
+    } else {
+      timeString = `${absMinutes} min`;
+    }
 
     if (diffMinutes === 0) return 'On time';
-    if (diffMinutes > 0) return `${diffMinutes} min after start`;
-    return `${Math.abs(diffMinutes)} min before start`;
+    if (diffMinutes > 0) return `${timeString} late`;
+    return `${timeString} early`;
   }, [checkedInAttendees, selectedEvent]);
 
   const peakCheckInWindow = useMemo(() => {
@@ -193,7 +238,7 @@ export default function Attendees() {
 
     const buckets = {};
     checkedInAttendees.forEach(a => {
-      const d = new Date(a.checkedInAt);
+      const d = new Date(getCheckInDate(a));
       const hour = d.getHours();
       const minuteBucket = d.getMinutes() < 30 ? '00' : '30';
       const key = `${hour}:${minuteBucket}`;
@@ -235,7 +280,6 @@ export default function Attendees() {
     setSelectedRows(prev => [...new Set([...prev, ...ids])]);
   };
 
-  // 🌟 FUNCTIONAL: Manual Single Check-in securely hits your backend
   const handleManualCheckIn = async (person) => {
     if (person.status === 'Checked In') {
       showToast('error', `${person.name} is already checked in.`);
@@ -248,20 +292,9 @@ export default function Attendees() {
     }
 
     try {
-      // Calls your actual NestJS Scan endpoint
-      const res = await api.post('/attendees/scan', { ticketId: person.ticketId });
-      const checkedInAt = res?.data?.checkedInAt || new Date().toISOString();
-
-      setAttendees(prev =>
-        prev.map(a =>
-          a.id === person.id
-            ? { ...a, status: 'Checked In', checkedInAt }
-            : a
-        )
-      );
-
+      await api.post('/attendees/scan', { ticketId: person.ticketId });
       showToast('success', `${person.name} checked in successfully.`);
-      loadData(true); // Resync with backend instantly
+      loadData(true); 
     } catch (error) {
       console.error(error);
       setModal({
@@ -273,7 +306,6 @@ export default function Attendees() {
     }
   };
 
-  // 🌟 FUNCTIONAL: Bulk Check-In
   const handleBulkCheckIn = async () => {
     const selectedPeople = filteredList.filter(p => selectedRows.includes(p.id));
     const eligible = selectedPeople.filter(p => p.status !== 'Checked In' && p.status !== 'Cancelled');
@@ -285,19 +317,9 @@ export default function Attendees() {
 
     try {
       await Promise.all(eligible.map(person => api.post('/attendees/scan', { ticketId: person.ticketId })));
-
-      const nowIso = new Date().toISOString();
-      setAttendees(prev =>
-        prev.map(a =>
-          selectedRows.includes(a.id) && a.status !== 'Cancelled'
-            ? { ...a, status: 'Checked In', checkedInAt: nowIso }
-            : a
-        )
-      );
-
       showToast('success', `${eligible.length} attendee(s) checked in.`);
       setSelectedRows([]);
-      loadData(true); // Resync with backend
+      loadData(true); 
     } catch (error) {
       console.error(error);
       setModal({
@@ -317,17 +339,21 @@ export default function Attendees() {
 
     return [
       headers.join(','),
-      ...rows.map(row => [
-        row.id,
-        `"${row.name || ''}"`,
-        `"${row.email || ''}"`,
-        row.ticketId || '',
-        getDisplayStatus(row),
-        row.status || '',
-        row.amountPaid || '0',
-        row.checkedInAt ? `"${formatDateTime(row.checkedInAt)}"` : '',
-        row.createdAt ? `"${formatDateTime(row.createdAt)}"` : ''
-      ].join(','))
+      ...rows.map(row => {
+        const checkIn = getCheckInDate(row);
+        const regDate = getRegistrationDate(row);
+        return [
+          row.id,
+          `"${row.name || ''}"`,
+          `"${row.email || ''}"`,
+          row.ticketId || '',
+          getDisplayStatus(row),
+          row.status || '',
+          row.amountPaid || '0',
+          checkIn ? `"${formatDateTime(checkIn)}"` : '',
+          regDate ? `"${formatDateTime(regDate)}"` : ''
+        ].join(',');
+      })
     ];
   };
 
@@ -476,7 +502,6 @@ export default function Attendees() {
             </div>
           </div>
 
-          {/* Insights */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
             <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
               <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Completion Rate</div>
@@ -496,7 +521,6 @@ export default function Attendees() {
             </div>
           </div>
 
-          {/* Bulk Action Bar */}
           {selectedRows.length > 0 && (
             <div className="mb-4 bg-blue-50 border border-blue-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div className="text-sm font-bold text-blue-700">
@@ -588,6 +612,9 @@ export default function Attendees() {
                       const isCancelled = displayStatus === 'Cancelled';
                       const isCheckedIn = displayStatus === 'Checked In';
                       const rowSelected = selectedRows.includes(person.id);
+                      
+                      const checkInDateValue = getCheckInDate(person);
+                      const registrationDateValue = getRegistrationDate(person);
 
                       return (
                         <React.Fragment key={person.id}>
@@ -655,7 +682,7 @@ export default function Attendees() {
 
                             <td className="px-6 py-4">
                               <span className="text-sm font-bold text-gray-700">
-                                {person.checkedInAt ? formatTimeOnly(person.checkedInAt) : '—'}
+                                {checkInDateValue ? formatTimeOnly(checkInDateValue) : '—'}
                               </span>
                             </td>
 
@@ -703,13 +730,13 @@ export default function Attendees() {
                                   <div className="bg-white rounded-xl border border-gray-100 p-4">
                                     <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Registration Date</div>
                                     <div className="text-sm font-extrabold text-gray-900">
-                                      {formatDateTime(person.createdAt || person.registeredAt)}
+                                      {formatDateOnly(registrationDateValue)}
                                     </div>
                                   </div>
                                   <div className="bg-white rounded-xl border border-gray-100 p-4">
                                     <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Check-in Time</div>
                                     <div className="text-sm font-extrabold text-gray-900">
-                                      {formatDateTime(person.checkedInAt)}
+                                      {checkInDateValue ? formatTimeOnly(checkInDateValue) : '—'}
                                     </div>
                                   </div>
                                 </div>

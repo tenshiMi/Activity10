@@ -107,6 +107,10 @@ export default function ManageUsers() {
     else setSelectedUsers([...selectedUsers, id]);
   };
 
+  // 🌟 FIX: Detect if the admin is typing "admin" in either the Add User or Edit User modals
+  const isNewUserAdmin = newUser.email.trim().toLowerCase() === 'admin';
+  const isEditUserAdmin = editModal.user?.email?.trim().toLowerCase() === 'admin';
+
   if (loading) return <div className="p-8 text-gray-500 animate-pulse font-medium text-lg">Loading users...</div>;
 
   return (
@@ -276,7 +280,8 @@ export default function ManageUsers() {
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Email Address</label>
-                <input type="email" required autoComplete="off" placeholder="e.g. jane@example.com" className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 focus:bg-white transition-all font-medium text-gray-900" value={newUser.email} onChange={(e) => setNewUser({ ...newUser, email: e.target.value })} />
+                {/* 🌟 FIX: Dynamic type attribute allows "admin" */}
+                <input type={isNewUserAdmin ? "text" : "email"} required autoComplete="off" placeholder="e.g. jane@example.com" className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 focus:bg-white transition-all font-medium text-gray-900" value={newUser.email} onChange={(e) => setNewUser({ ...newUser, email: e.target.value })} />
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Temporary Password</label>
@@ -311,7 +316,8 @@ export default function ManageUsers() {
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Email Address</label>
-                <input type="email" required autoComplete="off" className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 focus:bg-white transition-all font-medium text-gray-900" value={editModal.user.email} onChange={(e) => setEditModal({ ...editModal, user: { ...editModal.user, email: e.target.value }})} />
+                {/* 🌟 FIX: Dynamic type attribute allows "admin" */}
+                <input type={isEditUserAdmin ? "text" : "email"} required autoComplete="off" className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50 focus:bg-white transition-all font-medium text-gray-900" value={editModal.user.email} onChange={(e) => setEditModal({ ...editModal, user: { ...editModal.user, email: e.target.value }})} />
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 flex justify-between"><span>New Password</span><span className="text-gray-400 font-normal">Optional</span></label>

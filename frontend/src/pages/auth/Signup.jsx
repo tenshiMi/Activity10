@@ -39,7 +39,7 @@ export default function Signup() {
   const [errorMessage, setErrorMessage] = useState('');
 
   const passwordRules = {
-    length: formData.password.length >= 6,
+    length: formData.password.length >= 8, 
     uppercase: /[A-Z]/.test(formData.password),
     number: /[0-9]/.test(formData.password),
     special: /[!@#$%^&*(),.?":{}|<>]/.test(formData.password)
@@ -64,18 +64,25 @@ export default function Signup() {
     setErrorMessage(''); 
 
     try {
+      const safeUsername = formData.email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '') + Math.floor(Math.random() * 1000);
+      
       const payload = {
         name: `${formData.firstName} ${formData.lastName}`.trim(),
         email: formData.email,
         password: formData.password,
-        role: formData.role
+        // 🌟 FIX: Force the role to lowercase so MySQL doesn't crash on ENUM mismatch!
+        role: formData.role.toLowerCase(), 
+        username: safeUsername
       };
       
       await api.post('/users', payload);
       setStep(2); 
 
     } catch (error) {
-      const backendError = error.response?.data?.message || 'Registration failed. Please try again.';
+      // 🌟 DEEP LOGGING: This will print the exact backend error to your browser console
+      console.error("SIGNUP CRASH REPORT:", error.response?.data || error);
+      
+      const backendError = error.response?.data?.message || 'Server Error. This email might already exist, or the database rejected the data format.';
       setErrorMessage(Array.isArray(backendError) ? backendError[0] : backendError);
     } finally {
       setIsLoading(false);
@@ -106,7 +113,6 @@ export default function Signup() {
   return (
     <div className="flex h-screen w-full overflow-hidden bg-gray-900">
       
-      {/* 🌟 UPGRADED 2-SIDED 3D CARD FLIP CSS */}
       <style>{`
         @keyframes card-flip {
           0%, 25% { transform: rotateY(0deg); }
@@ -162,16 +168,13 @@ export default function Signup() {
           
           <div className="text-center mb-10">
             
-            {/* 🌟 NEW: TRUE 2-SIDED FLIPPING LOGO CARD */}
             <div className="w-20 h-20 mx-auto mb-6 perspective-1000">
               <div className="relative w-full h-full animate-card-flip preserve-3d">
                 
-                {/* FRONT FACE: New Harmony Logo */}
                 <div className="absolute inset-0 w-full h-full backface-hidden bg-white border border-gray-100 rounded-2xl flex items-center justify-center shadow-xl shadow-indigo-500/10">
                   <HarmonyLogo className="w-12 h-12" />
                 </div>
                 
-                {/* BACK FACE: User or Shield Icon based on Step! */}
                 <div className="absolute inset-0 w-full h-full backface-hidden bg-white border border-gray-100 rounded-2xl flex items-center justify-center shadow-xl shadow-indigo-500/10 rotate-y-180 text-indigo-600">
                   {step === 1 ? <User size={36} strokeWidth={2.5} /> : <ShieldCheck size={36} strokeWidth={2.5} />}
                 </div>
@@ -189,7 +192,7 @@ export default function Signup() {
 
           {errorMessage && (
             <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl flex items-center gap-2 text-sm mb-6 shadow-sm">
-              <AlertCircle size={18} shrink-0 />
+              <AlertCircle size={18} className="shrink-0" />
               <span className="font-medium">{errorMessage}</span>
             </div>
           )}
@@ -263,7 +266,7 @@ export default function Signup() {
                 <div className="bg-indigo-50/50 border border-indigo-100/50 rounded-xl p-4 mt-3 space-y-2">
                   <div className="flex items-center gap-2 text-sm">
                     {passwordRules.length ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <XCircle className="w-4 h-4 text-gray-400" />}
-                    <span className={passwordRules.length ? 'text-gray-900 font-medium' : 'text-gray-500'}>At least 6 characters long</span>
+                    <span className={passwordRules.length ? 'text-gray-900 font-medium' : 'text-gray-500'}>At least 8 characters long</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     {passwordRules.uppercase ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <XCircle className="w-4 h-4 text-gray-400" />}

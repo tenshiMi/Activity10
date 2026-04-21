@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { api, apiUrl } from '../../lib/api';
 import { Mail, Lock, AlertCircle, KeyRound, LogIn} from 'lucide-react';
-import HarmonyLogo from '../../components/HarmonyLogo'; // 🌟 IMPORT YOUR NEW LOGO
+import HarmonyLogo from '../../components/HarmonyLogo'; 
 
 export default function Login() {
   const navigate = useNavigate();
@@ -132,10 +132,12 @@ export default function Login() {
     }
   };
 
+  // 🌟 FIX: Determine if the input type should be 'text' (for admin) or 'email'
+  const isInputAdmin = formData.email.trim().toLowerCase() === 'admin';
+
   return (
     <div className="flex h-screen w-full overflow-hidden bg-gray-900">
       
-      {/* 🌟 UPGRADED 2-SIDED 3D CARD FLIP CSS */}
       <style>{`
         @keyframes card-flip {
           0%, 25% { transform: rotateY(0deg); }
@@ -192,7 +194,6 @@ export default function Login() {
         <div className="flex-1 w-full max-w-md mx-auto py-12 px-8 sm:px-4 flex flex-col justify-center">
           
           <div className="text-center mb-10">
-            {/* 🌟 THE 3D FLIPPING LOGO CARD */}
             <div className="w-20 h-20 mx-auto mb-6 perspective-1000">
               <div className="relative w-full h-full animate-card-flip preserve-3d">
                 
@@ -227,8 +228,9 @@ export default function Login() {
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <Mail className="h-5 w-5 text-gray-400" />
                 </div>
+                {/* 🌟 FIX: Dynamic type attribute allows "admin" to bypass HTML email validation */}
                 <input
-                  type="email"
+                  type={isInputAdmin ? "text" : "email"}
                   name="email"
                   required
                   value={formData.email}

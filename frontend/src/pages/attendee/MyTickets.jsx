@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../lib/api';
-import { Calendar, MapPin, Ticket, Clock, CheckCircle2, Search, History, X } from 'lucide-react'; // 🌟 Added X
+import { Calendar, MapPin, Ticket, Clock, CheckCircle2, Search, History, X, XCircle } from 'lucide-react'; // 🌟 FIX: Added XCircle
 import PageLoader from '../../components/PageLoader'; 
 
 export default function MyTickets() {
@@ -9,44 +9,45 @@ export default function MyTickets() {
   const [myTickets, setMyTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('upcoming'); 
-  const [selectedQr, setSelectedQr] = useState(null); // 🌟 NEW: State for the QR popup
+  const [selectedQr, setSelectedQr] = useState(null); 
 
   const user = JSON.parse(localStorage.getItem('user') || 'null');
 
-  useEffect(() => {
-    const fetchMyTickets = async () => {
-      try {
-        setLoading(true);
-        const [eventsRes, attendeesRes] = await Promise.all([
-          api.get('/events'),
-          api.get('/attendees')
-        ]);
+  const fetchMyTickets = useCallback(async (silent = false) => {
+    try {
+      if (!silent) setLoading(true);
+      const [eventsRes, attendeesRes] = await Promise.all([
+        api.get('/events'),
+        api.get('/attendees')
+      ]);
+      
+      if (user?.email) {
+        const myActiveTickets = attendeesRes.data.filter(
+          a => a.email === user.email && a.status !== 'Cancelled'
+        );
         
-        if (user?.email) {
-          const myActiveTickets = attendeesRes.data.filter(
-            a => a.email === user.email && a.status !== 'Cancelled'
-          );
-          
-          const myEventIds = myActiveTickets.map(t => String(t.eventId));
-          const myDetailedEvents = eventsRes.data.filter(e => myEventIds.includes(String(e.id)));
-          
-          setEvents(myDetailedEvents);
-          setMyTickets(myActiveTickets);
-        }
+        const myEventIds = myActiveTickets.map(t => String(t.eventId));
+        const myDetailedEvents = eventsRes.data.filter(e => myEventIds.includes(String(e.id)));
         
-        setTimeout(() => setLoading(false), 500); 
-      } catch (error) {
-        console.error("Error fetching tickets:", error);
-        setLoading(false);
+        setEvents(myDetailedEvents);
+        setMyTickets(myActiveTickets);
       }
-    };
+    } catch (error) {
+      console.error("Error fetching tickets:", error);
+    } finally {
+      if (!silent) setTimeout(() => setLoading(false), 500);
+    }
+  }, [user?.email]);
 
+  useEffect(() => {
     if (user) {
       fetchMyTickets();
+      const interval = setInterval(() => fetchMyTickets(true), 15000);
+      return () => clearInterval(interval);
     } else {
       setLoading(false);
     }
-  }, [user?.email]);
+  }, [fetchMyTickets, user]);
 
   const upcomingEvents = events.filter(e => e.status === 'Published');
   const pastEvents = events.filter(e => e.status === 'Completed' || e.isArchived);
@@ -65,6 +66,27 @@ export default function MyTickets() {
       }
       return `${formattedDate} • ${formattedTime}`;
     } catch { return `${dateStr} • ${timeStr}`; }
+  };
+
+  const formatTimeOnly = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+      return new Date(dateStr).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    } catch { return ''; }
+  };
+
+  // 🌟 SMART LOGIC: Check if this user missed the event!
+  const getTicketStatus = (ticket, event) => {
+    if (ticket.status === 'Cancelled') return 'Cancelled';
+    if (ticket.status === 'Checked In') return 'Checked In';
+
+    const eventStart = new Date(`${event.date}T${event.time || '00:00:00'}`);
+    const noShowTime = new Date(eventStart.getTime() + 4 * 60 * 60 * 1000); // 4 hours after start
+
+    if (new Date() >= noShowTime) {
+      return 'No Show';
+    }
+    return 'Ready';
   };
 
   return (
@@ -138,6 +160,7 @@ export default function MyTickets() {
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
               {displayedEvents.map((event) => {
                 const userTicket = myTickets.find(t => String(t.eventId) === String(event.id));
+                const ticketStatus = getTicketStatus(userTicket, event); // 🌟 Runs our new dynamic check!
 
                 return (
                   <div key={event.id} className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-xl transition-all duration-300 group flex flex-col hover:-translate-y-1">
@@ -150,15 +173,22 @@ export default function MyTickets() {
                       )}
                       
                       <div className="absolute top-4 right-4 flex gap-2">
-                        {userTicket?.status === 'Checked In' ? (
-                           <span className="px-3 py-1.5 bg-emerald-500/90 backdrop-blur-md text-white text-[10px] uppercase tracking-widest font-extrabold rounded-lg shadow-sm flex items-center gap-1">
-                             <CheckCircle2 size={12} /> Attended
-                           </span>
-                        ) : activeTab === 'upcoming' ? (
+                        {/* 🌟 Dynamic Status Badges */}
+                        {ticketStatus === 'Checked In' && (
+                          <span className="px-3 py-1.5 bg-emerald-500/90 backdrop-blur-md text-white text-[10px] uppercase tracking-widest font-extrabold rounded-lg shadow-sm flex items-center gap-1">
+                            <CheckCircle2 size={12} /> Checked In
+                          </span>
+                        )}
+                        {ticketStatus === 'No Show' && (
+                          <span className="px-3 py-1.5 bg-red-600/90 backdrop-blur-md text-white text-[10px] uppercase tracking-widest font-extrabold rounded-lg shadow-sm flex items-center gap-1">
+                            <XCircle size={12} /> No Show
+                          </span>
+                        )}
+                        {ticketStatus === 'Ready' && activeTab === 'upcoming' && (
                           <span className="px-3 py-1.5 bg-white/90 backdrop-blur-md text-slate-900 text-[10px] uppercase tracking-widest font-extrabold rounded-lg shadow-sm">
                             Ready
                           </span>
-                        ) : null}
+                        )}
                       </div>
                     </div>
                     
@@ -178,24 +208,44 @@ export default function MyTickets() {
                         </div>
                       </div>
 
-                      {/* 🌟 UPGRADED: Clickable Ticket Number Block */}
+                      {/* 🌟 QR CODE BOX */}
                       <div 
-                        onClick={() => userTicket?.ticketId && setSelectedQr(userTicket.ticketId)}
-                        className={`mb-6 p-4 rounded-2xl border flex items-center justify-between transition-all group ${
-                          userTicket?.ticketId 
-                            ? 'bg-slate-50 border-slate-200 hover:bg-blue-50 hover:border-blue-200 cursor-pointer' 
-                            : 'bg-slate-50 border-slate-100 opacity-70'
+                        onClick={() => {
+                          if (ticketStatus === 'No Show') return; // Disable clicks if they missed it
+                          if (userTicket?.ticketId) setSelectedQr(userTicket.ticketId);
+                        }}
+                        className={`mb-6 p-4 rounded-2xl border transition-all group ${
+                          ticketStatus === 'No Show'
+                            ? 'bg-red-50 border-red-100 opacity-80 cursor-not-allowed'
+                            : userTicket?.ticketId 
+                              ? 'bg-slate-50 border-slate-200 hover:bg-blue-50 hover:border-blue-200 cursor-pointer' 
+                              : 'bg-slate-50 border-slate-100 opacity-70'
                         }`}
-                        title={userTicket?.ticketId ? "Click to view QR Code" : "Processing ticket..."}
+                        title={ticketStatus === 'No Show' ? "Event Missed" : userTicket?.ticketId ? "Click to view QR Code" : "Processing ticket..."}
                       >
-                         <div>
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Ticket ID</span>
-                            <span className={`text-sm font-extrabold font-mono tracking-wider ${userTicket?.ticketId ? 'text-slate-900 group-hover:text-blue-700' : 'text-slate-500'}`}>
-                              {userTicket?.ticketId || 'PROCESSING...'}
-                            </span>
-                         </div>
-                         <div className={`p-2 rounded-xl transition-transform ${userTicket?.ticketId ? 'bg-white shadow-sm border border-slate-200 group-hover:scale-110 group-hover:text-blue-600' : 'text-slate-300'}`}>
-                           <Ticket size={20} />
+                         <div className="flex items-center justify-between">
+                            <div>
+                               <span className={`text-[10px] font-black uppercase tracking-widest block mb-1 ${ticketStatus === 'No Show' ? 'text-red-400' : 'text-slate-400'}`}>Ticket ID</span>
+                               <span className={`text-sm font-extrabold font-mono tracking-wider ${ticketStatus === 'No Show' ? 'text-red-700 line-through' : userTicket?.ticketId ? 'text-slate-900 group-hover:text-blue-700' : 'text-slate-500'}`}>
+                                 {userTicket?.ticketId || 'PROCESSING...'}
+                               </span>
+                            </div>
+                            
+                            {/* Checked In Time vs Missed Event Icon */}
+                            {ticketStatus === 'Checked In' && userTicket?.checkedInAt ? (
+                              <div className="text-right">
+                                <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest block mb-1">Scanned At</span>
+                                <span className="text-xs font-bold text-slate-700">{formatTimeOnly(userTicket.checkedInAt)}</span>
+                              </div>
+                            ) : ticketStatus === 'No Show' ? (
+                               <div className="p-2 text-red-500">
+                                 <XCircle size={20} />
+                               </div>
+                            ) : (
+                              <div className={`p-2 rounded-xl transition-transform ${userTicket?.ticketId ? 'bg-white shadow-sm border border-slate-200 group-hover:scale-110 group-hover:text-blue-600' : 'text-slate-300'}`}>
+                                <Ticket size={20} />
+                              </div>
+                            )}
                          </div>
                       </div>
 
@@ -216,15 +266,15 @@ export default function MyTickets() {
           )}
         </div>
 
-        {/* 🌟 NEW: The QR Code Popup Modal */}
+        {/* The QR Code Popup Modal */}
         {selectedQr && (
           <div 
             className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 animate-in fade-in duration-200" 
-            onClick={() => setSelectedQr(null)} // Close if background clicked
+            onClick={() => setSelectedQr(null)} 
           >
             <div 
               className="bg-white rounded-3xl shadow-2xl p-8 max-w-sm w-full text-center relative animate-in zoom-in-95 duration-300" 
-              onClick={e => e.stopPropagation()} // Prevent clicking the card from closing it
+              onClick={e => e.stopPropagation()} 
             >
               <button 
                 onClick={() => setSelectedQr(null)}

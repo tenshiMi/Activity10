@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api';
 import { 
@@ -72,6 +72,17 @@ export default function AdminDashboard() {
         message: `Great news! Your event "${event.title}" has been approved by the Admin and is now live.`,
         type: 'APPROVAL'
       });
+
+      // 🌟 NEW: Broadcast to ALL attendees that a new event just dropped!
+      try {
+        await api.post('/notifications/broadcast/attendees', {
+          title: 'New Event Alert! 🎉',
+          message: `Tickets are now available for "${event.title}". Get yours before they sell out!`,
+          type: 'INFO'
+        });
+      } catch (broadcastError) {
+        console.error('Failed to broadcast notification:', broadcastError);
+      }
 
       setEvents(events.map(e => e.id === event.id ? { ...e, status: 'Published' } : e));
       setModal({ show: true, type: 'success', title: 'Event Published', message: `Notified the organizer that ${event.title} is live!` });
@@ -167,10 +178,10 @@ export default function AdminDashboard() {
   if (loading) return <div className="text-gray-500 animate-pulse text-lg font-medium p-8">Loading platform events...</div>;
 
   return (
-    <div className="pb-12 max-w-7xl mx-auto">
+    <div className="pb-12 w-full transition-all duration-300">
       
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 px-2">
         <div>
           <h1 className="text-3xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight">
             All Platform Events <Shield className="text-blue-500 w-7 h-7" />
@@ -190,7 +201,7 @@ export default function AdminDashboard() {
 
       {/* Premium Pending Banner */}
       {pendingCount > 0 && (
-        <div className="bg-amber-50/80 border border-amber-200/60 rounded-2xl p-5 mb-8 flex flex-col sm:flex-row items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-4 backdrop-blur-sm">
+        <div className="mx-2 bg-amber-50/80 border border-amber-200/60 rounded-2xl p-5 mb-8 flex flex-col sm:flex-row items-center justify-between shadow-sm animate-in fade-in slide-in-from-top-4 backdrop-blur-sm">
           <div className="flex items-center gap-4 mb-4 sm:mb-0">
             <div className="w-12 h-12 bg-amber-100/80 text-amber-600 rounded-full flex items-center justify-center shrink-0 shadow-inner">
               <Clock size={24} strokeWidth={2.5} />
@@ -210,7 +221,7 @@ export default function AdminDashboard() {
       )}
 
       {/* Premium Search & Filter Bar */}
-      <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-200 mb-8 flex flex-col md:flex-row gap-4">
+      <div className="mx-2 bg-white p-4 rounded-2xl shadow-sm border border-gray-200 mb-8 flex flex-col md:flex-row gap-4">
         <div className="relative flex-1">
           <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><Search className="h-5 w-5 text-gray-400" /></div>
           <input 
@@ -245,7 +256,7 @@ export default function AdminDashboard() {
 
       {/* GRID VIEW */}
       {viewMode === 'grid' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-8 px-2">
           {filteredEvents.map(event => {
             const hasTicketsSold = Number(event.ticketsSold) > 0;
             const cannotArchive = hasTicketsSold && !event.isArchived;
@@ -253,7 +264,7 @@ export default function AdminDashboard() {
             return (
             <div key={event.id} className={`bg-white rounded-3xl shadow-sm border overflow-hidden flex flex-col transition-all duration-300 group ${event.isArchived || isRejectedEvent(event) ? 'opacity-70 grayscale-[50%] hover:grayscale-0 border-gray-200' : isPendingEvent(event) ? 'border-amber-300 shadow-amber-100 hover:shadow-xl hover:-translate-y-1' : 'border-gray-100 hover:shadow-xl hover:-translate-y-1'}`}>
               
-              <div className="h-48 bg-gray-100 relative overflow-hidden">
+              <div className="h-52 bg-gray-100 relative overflow-hidden">
                 {event.imageUrl ? (
                   <img src={event.imageUrl} alt={event.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-in-out" />
                 ) : <div className="w-full h-full bg-gradient-to-br from-slate-800 to-slate-900"></div>}
@@ -275,30 +286,30 @@ export default function AdminDashboard() {
               <div className="p-6 flex-1 flex flex-col">
                 <h3 className="text-xl font-extrabold text-gray-900 mb-4 line-clamp-1 group-hover:text-blue-600 transition-colors" title={event.title}>{event.title}</h3>
                 
-                <div className="space-y-3 mb-6 text-sm">
+                <div className="space-y-4 mb-6 text-sm">
                   <div className="flex items-center text-gray-600 font-medium">
-                    <Calendar className="w-4 h-4 mr-3 text-gray-400" />
+                    <Calendar className="w-5 h-5 mr-3 text-blue-500" />
                     {new Date(event.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
                   </div>
                   <div className="flex items-center text-gray-600 font-medium">
-                    <MapPin className="w-4 h-4 mr-3 text-gray-400" />
+                    <MapPin className="w-5 h-5 mr-3 text-rose-500" />
                     <span className="truncate">{event.location}</span>
                   </div>
-                  <div className="flex items-center text-gray-600 font-medium bg-gray-50 border border-gray-100 py-1.5 px-3 -ml-2 rounded-lg inline-flex w-fit">
-                    <User className="w-4 h-4 mr-2 text-blue-500" />
+                  <div className="flex items-center text-gray-600 font-medium bg-gray-50 border border-gray-100 py-2 px-3 -ml-1 rounded-xl inline-flex w-fit">
+                    <User className="w-4 h-4 mr-2 text-slate-500" />
                     <span className="truncate text-xs">Hosted by <span className="font-bold text-gray-900">{getOrganizerName(event.organizerId)}</span></span>
                   </div>
                 </div>
 
-                <div className="flex gap-3 mb-6">
-                  <div className="flex-1 bg-gray-50 rounded-2xl p-3.5 border border-gray-100">
+                <div className="flex gap-4 mb-6">
+                  <div className="flex-1 bg-gray-50 rounded-2xl p-4 border border-gray-100">
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Tickets Sold</p>
                     <p className="text-sm font-extrabold text-gray-800 flex items-center gap-1.5">
                       <Ticket className="w-4 h-4 text-blue-500" />
                       {event.ticketsSold || 0} <span className="text-gray-400 font-medium text-xs">/ {event.capacity || '∞'}</span>
                     </p>
                   </div>
-                  <div className="flex-1 bg-emerald-50/50 rounded-2xl p-3.5 border border-emerald-100/50">
+                  <div className="flex-1 bg-emerald-50/50 rounded-2xl p-4 border border-emerald-100/50">
                     <p className="text-[10px] font-bold text-emerald-600/70 uppercase tracking-wider mb-1">Price</p>
                     <p className="text-sm font-extrabold text-emerald-700">
                       {event.price === '0' || event.price === '0.00' ? 'FREE' : `₱${event.price}`}
@@ -322,18 +333,18 @@ export default function AdminDashboard() {
                         <button
                           onClick={() => confirmArchive(event.id, event.title, event.isArchived)}
                           disabled={cannotArchive}
-                          className={`flex items-center justify-center w-10 h-10 transition rounded-xl cursor-pointer ${
-                            cannotArchive ? 'text-gray-300 bg-gray-50 cursor-not-allowed' : event.isArchived ? 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100' : 'text-gray-400 hover:text-red-600 hover:bg-red-50'
+                          className={`flex items-center justify-center w-11 h-11 transition rounded-xl cursor-pointer ${
+                            cannotArchive ? 'text-gray-300 bg-gray-50 cursor-not-allowed' : event.isArchived ? 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100' : 'text-gray-400 hover:text-red-600 hover:bg-red-50 border border-transparent hover:border-red-100'
                           }`}
                           title={event.isArchived ? 'Restore' : 'Archive'}
                         >
-                          <Archive className="w-4 h-4" />
+                          <Archive className="w-5 h-5" />
                         </button>
 
                         {isPublishedEvent(event) ? (
                           <button
                             onClick={() => setAttendeesModal({ show: true, eventTitle: event.title, eventId: event.id })}
-                            className="flex items-center justify-center px-4 h-10 text-sm font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 transition rounded-xl cursor-pointer"
+                            className="flex items-center justify-center px-5 h-11 text-sm font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 transition rounded-xl cursor-pointer border border-blue-100"
                             title="View Attendees"
                           >
                             <Eye className="w-4 h-4 mr-2" /> View
@@ -341,7 +352,7 @@ export default function AdminDashboard() {
                         ) : (
                           <button
                             disabled
-                            className="flex items-center justify-center px-4 h-10 text-sm font-bold text-gray-300 bg-gray-50 rounded-xl cursor-not-allowed"
+                            className="flex items-center justify-center px-5 h-11 text-sm font-bold text-gray-300 bg-gray-50 rounded-xl cursor-not-allowed border border-gray-100"
                             title="Available when the event is Published"
                           >
                             <Eye className="w-4 h-4 mr-2" /> View
@@ -349,7 +360,7 @@ export default function AdminDashboard() {
                         )}
                       </div>
 
-                      <button onClick={() => navigate('/admin/create', { state: { eventToEdit: event } })} className="flex items-center justify-center px-4 h-10 text-sm font-bold bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition cursor-pointer shadow-md">
+                      <button onClick={() => navigate('/admin/create', { state: { eventToEdit: event } })} className="flex items-center justify-center px-5 h-11 text-sm font-bold bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition cursor-pointer shadow-md">
                         <Settings className="w-4 h-4 mr-2" /> Edit
                       </button>
                     </>
@@ -365,7 +376,7 @@ export default function AdminDashboard() {
 
       {/* LIST VIEW */}
       {viewMode === 'list' && (
-        <div className="bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="mx-2 bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left min-w-[1000px]">
               <thead className="bg-gray-50/80 border-b border-gray-200">
@@ -457,7 +468,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* 🌟 RESTORED AND POLISHED: VIEW ATTENDEES MODAL */}
+      {/* VIEW ATTENDEES MODAL */}
       {attendeesModal.show && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-lg text-center animate-in zoom-in duration-200 scale-100">
@@ -534,8 +545,8 @@ export default function AdminDashboard() {
               {modal.type === 'error' ? <AlertTriangle size={32} strokeWidth={2.5} /> : <CheckCircle size={32} strokeWidth={2.5} />}
             </div>
             <h2 className={`text-2xl font-extrabold mb-2 tracking-tight ${modal.type === 'error' ? 'text-red-600' : 'text-gray-900'}`}>{modal.title}</h2>
-            <p className="text-gray-500 font-medium mb-8 leading-relaxed">{modal.message}</p>
-            <button onClick={() => setModal({ show: false, type: '', title: '', message: '' })} className="w-full py-3.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 font-bold transition-all shadow-md active:scale-95">
+            <p className="text-gray-500 font-medium mb-8">{modal.message}</p>
+            <button onClick={() => setModal({ show: false, type: '', title: '', message: '' })} className="w-full py-3.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 font-bold transition-all shadow-md cursor-pointer active:scale-95">
               Got it
             </button>
           </div>

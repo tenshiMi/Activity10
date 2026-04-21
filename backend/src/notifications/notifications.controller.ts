@@ -20,4 +20,10 @@ export class NotificationsController {
   create(@Body() body: { userId: number, title: string, message: string, type: string }) {
     return this.notificationsService.createNotification(body.userId, body.title, body.message, body.type);
   }
+
+  // 🌟 NEW: The super-fast broadcast endpoint
+  @Post('broadcast/attendees')
+  broadcastToAttendees(@Body() body: { title: string, message: string, type?: string }) {
+    return this.notificationsService.broadcastToAttendees(body.title, body.message, body.type || 'INFO');
+  }
 }

@@ -43,7 +43,7 @@ export default function NotificationBell() {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
                 setIsOpen(false);
             }
-        };
+        }
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
@@ -51,7 +51,8 @@ export default function NotificationBell() {
     const markAsRead = async (id) => {
         try {
             await api.patch(`/notifications/${id}/read`);
-            setNotifications(notifications.map(n => n.id === id ? { ...n, isRead: true } : n));
+            // 🌟 FIX: Use functional state update to prevent stale data bugs
+            setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
         } catch (error) {
             console.error("Error marking as read:", error);
         }
@@ -59,8 +60,16 @@ export default function NotificationBell() {
 
     const markAllAsRead = async () => {
         const unread = notifications.filter(n => !n.isRead);
-        for (let n of unread) {
-            await markAsRead(n.id);
+        if (unread.length === 0) return;
+
+        try {
+            // 🌟 FIX: Fire all API calls efficiently in parallel
+            await Promise.all(unread.map(n => api.patch(`/notifications/${n.id}/read`)));
+            
+            // 🌟 FIX: Update the React state exactly once for all of them
+            setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+        } catch (error) {
+            console.error("Error marking all as read:", error);
         }
     };
 
@@ -80,7 +89,7 @@ export default function NotificationBell() {
             {/* The Bell Button */}
             <button 
                 onClick={() => setIsOpen(!isOpen)}
-                className="relative p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-full transition duration-200 focus:outline-none"
+                className="relative p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-full transition duration-200 focus:outline-none cursor-pointer"
             >
                 <Bell size={22} />
                 {unreadCount > 0 && (
@@ -99,7 +108,7 @@ export default function NotificationBell() {
                             Notifications {unreadCount > 0 && <span className="bg-blue-500 text-white text-xs px-2 py-0.5 rounded-full">{unreadCount} new</span>}
                         </h3>
                         {unreadCount > 0 && (
-                            <button onClick={markAllAsRead} className="text-xs text-slate-300 hover:text-white transition flex items-center gap-1">
+                            <button onClick={markAllAsRead} className="text-xs text-slate-300 hover:text-white transition flex items-center gap-1 cursor-pointer">
                                 <Check size={14} /> Mark all read
                             </button>
                         )}

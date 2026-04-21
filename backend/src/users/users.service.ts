@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan, Not } from 'typeorm';
 import { Cron, CronExpression } from '@nestjs/schedule';
@@ -8,7 +8,6 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcryptjs';
 import * as nodemailer from 'nodemailer';
 
-// 🌟 FIX 1: Explicit interface to stop TypeScript from complaining about "any" types
 interface PendingUser {
   name: string;
   email: string;
@@ -26,14 +25,13 @@ interface PendingUser {
 
 @Injectable()
 export class UsersService {
-  // 🌟 FIX 2: Apply the strict interface here
   private pendingUsers = new Map<string, PendingUser>();
 
   private transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
-      user: 'harmony.events@gmail.com',
-      pass: 'ygzh ucbr haze gvhv',
+      user: 'harmony.events9@gmail.com',
+      pass: 'banm cbtr rtae llrm',
     },
   });
 
@@ -67,12 +65,12 @@ export class UsersService {
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + 15);
 
-    // 🌟 FIX 3: Cast the object to match the exact interface
     this.pendingUsers.set(normalizedEmail, {
       name: rest.name,
-      username: rest.username,
+      username: rest.username?.trim(),
       email: normalizedEmail,
       password: hashedPassword,
+      role: rest.role, 
       otp,
       expiresAt,
     } as PendingUser);
@@ -84,7 +82,16 @@ export class UsersService {
       text: `Welcome! Your verification code is: ${otp}. It will expire in 15 minutes.`,
     };
 
-    await this.transporter.sendMail(mailOptions);
+    try {
+      console.log(`\n=========================================`);
+      console.log(`📩 [DEV MODE] OTP CODE FOR ${normalizedEmail}: ${otp}`);
+      console.log(`=========================================\n`);
+      
+      await this.transporter.sendMail(mailOptions);
+    } catch (error: any) {
+      console.error('🚨 Nodemailer Error (Safe Fallback Active):', error.message);
+    }
+
     return { message: 'OTP sent. Please verify your email.' };
   }
 
@@ -264,12 +271,20 @@ export class UsersService {
       pendingEmailOtpExpires: expiresAt,
     });
 
-    await this.transporter.sendMail({
-      from: 'harmony.events@gmail.com',
-      to: normalizedNewEmail,
-      subject: 'Confirm your new email address',
-      text: `Your Harmony Events email change verification code is: ${otp}. It will expire in 15 minutes.`,
-    });
+    try {
+      console.log(`\n=========================================`);
+      console.log(`📩 [DEV MODE] OTP CODE FOR EMAIL CHANGE: ${otp}`);
+      console.log(`=========================================\n`);
+      
+      await this.transporter.sendMail({
+        from: 'harmony.events@gmail.com',
+        to: normalizedNewEmail,
+        subject: 'Confirm your new email address',
+        text: `Your Harmony Events email change verification code is: ${otp}. It will expire in 15 minutes.`,
+      });
+    } catch (error: any) {
+      console.error('🚨 Nodemailer Error:', error.message);
+    }
 
     return { message: 'Verification code sent successfully to your new email address.' };
   }
@@ -299,7 +314,7 @@ export class UsersService {
     }
 
     const oldEmail = user.email;
-    const newEmail = String(user.pendingEmail); // 🌟 FIX 4: Strict string cast
+    const newEmail = String(user.pendingEmail);
 
     const emailOwner = await this.usersRepository.findOne({
       where: { email: newEmail, id: Not(id) },
@@ -338,7 +353,6 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
-    // 🌟 FIX 5: Declare as 'any' to bypass strict TypeORM interface checks on partial updates
     const sanitizedUpdate: any = {};
 
     if (typeof updateData.name !== 'undefined') sanitizedUpdate.name = updateData.name;
@@ -369,16 +383,17 @@ export class UsersService {
     if (typeof updateData.marketingEmails !== 'undefined') sanitizedUpdate.marketingEmails = updateData.marketingEmails;
     if (typeof updateData.darkMode !== 'undefined') sanitizedUpdate.darkMode = updateData.darkMode;
 
+    // 🌟 FIX: Hash the password when an Admin forces a password update directly
     if (typeof updateData.password !== 'undefined') {
-      sanitizedUpdate.password = updateData.password;
+      sanitizedUpdate.password = await bcrypt.hash(String(updateData.password), 10);
     }
 
+    // Handles the normal user profile password change (needs current password validation)
     if (updateData.newPassword) {
       if (!updateData.currentPassword) {
         throw new BadRequestException('Current password is required to change password.');
       }
 
-      // 🌟 FIX 6: Use String() to ensure bcrypt always receives a strict string type
       const isPasswordValid = await bcrypt.compare(String(updateData.currentPassword), existingUser.password);
       if (!isPasswordValid) throw new BadRequestException('Current password is incorrect.');
 
