@@ -20,13 +20,11 @@ import {
   Calendar,
   Activity,
   Ticket,
-  Monitor,
-  Globe,
-  LogOut,
   RefreshCcw,
   Check,
   XCircle,
-  BadgeCheck
+  BadgeCheck,
+  LayoutGrid
 } from 'lucide-react';
 
 export default function Profile() {
@@ -69,19 +67,11 @@ export default function Profile() {
   const [userStats, setUserStats] = useState({
     ticketsBooked: 0,
     eventsJoined: 0,
-    totalEventsAvailable: 0,
+    myPublishedEvents: 0,
+    totalEventsCreated: 0,
     joinedDate: 'Loading...',
     lastUpdated: 'Recently',
     accountStatus: 'Active'
-  });
-
-  const [sessionInfo, setSessionInfo] = useState({
-    device: 'Detecting...',
-    browser: 'Detecting...',
-    os: 'Detecting...',
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Unknown',
-    time: '',
-    locationLabel: 'Current device location'
   });
 
   const fallbackAvatar = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
@@ -180,42 +170,6 @@ export default function Profile() {
     return normalized;
   };
 
-  useEffect(() => {
-    const getDeviceDetails = () => {
-      const ua = navigator.userAgent;
-
-      let browser = 'Browser';
-      if (ua.includes('Firefox')) browser = 'Firefox';
-      else if (ua.includes('OPR') || ua.includes('Opera')) browser = 'Opera';
-      else if (ua.includes('Edg')) browser = 'Edge';
-      else if (ua.includes('Chrome')) browser = 'Chrome';
-      else if (ua.includes('Safari')) browser = 'Safari';
-
-      let os = 'OS';
-      if (ua.includes('Win')) os = 'Windows';
-      else if (ua.includes('Mac')) os = 'MacOS';
-      else if (ua.includes('Linux')) os = 'Linux';
-      else if (ua.includes('Android')) os = 'Android';
-      else if (ua.includes('like Mac')) os = 'iOS';
-
-      return { browser, os };
-    };
-
-    const { browser, os } = getDeviceDetails();
-
-    setSessionInfo((prev) => ({
-      ...prev,
-      browser,
-      os,
-      device: `${browser} on ${os}`,
-      time: new Date().toLocaleString('en-US', {
-        hour: 'numeric',
-        minute: 'numeric',
-        hour12: true
-      })
-    }));
-  }, []);
-
   const refreshProfileData = async () => {
     if (!user?.id) {
       setIsRefreshing(false);
@@ -252,14 +206,21 @@ export default function Profile() {
 
       const myActiveTickets = myAllTickets.filter((a) => a.status !== 'Cancelled');
 
-      const publishedEvents = eventsData.filter(
-        (e) => !e.isArchived && e.status === 'Published'
+      // 🌟 FIX: Only counts Published events that are NOT archived!
+      const myPublishedEvents = eventsData.filter(
+        (e) => String(e.organizerId) === String(user.id) && !e.isArchived && e.status === 'Published'
+      );
+
+      // Total events created counts EVERYTHING (draft, pending, rejected, archived)
+      const totalEventsCreated = eventsData.filter(
+        (e) => String(e.organizerId) === String(user.id)
       );
 
       setUserStats({
         ticketsBooked: myAllTickets.length,
         eventsJoined: myActiveTickets.length,
-        totalEventsAvailable: publishedEvents.length,
+        myPublishedEvents: myPublishedEvents.length,
+        totalEventsCreated: totalEventsCreated.length,
         joinedDate: formatMonthYear(refreshedUser.createdAt),
         lastUpdated: formatDateLabel(refreshedUser.updatedAt || refreshedUser.createdAt),
         accountStatus: refreshedUser.isActive === false ? 'Inactive' : 'Active'
@@ -530,18 +491,6 @@ export default function Profile() {
     }
   };
 
-  const handleSignOutAllDevices = () => {
-    if (
-      window.confirm(
-        'Are you sure you want to sign out of all devices? You will be logged out immediately.'
-      )
-    ) {
-      localStorage.clear();
-      sessionStorage.clear();
-      navigate('/login');
-    }
-  };
-
   const InfoRow = ({ icon, label, value, badge, valueClass = 'text-slate-900' }) => (
     <li className="flex items-center justify-between gap-4">
       <div className="flex items-center gap-2.5 text-slate-500 min-w-0">
@@ -562,7 +511,6 @@ export default function Profile() {
     <div className="min-h-screen bg-slate-50/50 pb-20 font-sans">
       <div className="max-w-[1280px] mx-auto pt-8 px-4 sm:px-6 lg:px-8 animate-in fade-in duration-500">
         
-        {/* 🌟 FIX: Dynamic Routing for the Back Button */}
         <Link
           to={isOrganizer ? "/organizer" : "/"}
           className="inline-flex items-center gap-2 text-slate-500 hover:text-blue-600 font-bold text-sm transition-colors mb-6 group w-fit"
@@ -766,11 +714,20 @@ export default function Profile() {
                     </>
                   )}
 
-                  <InfoRow
-                    icon={<Calendar size={16} />}
-                    label="Published Events"
-                    value={userStats.totalEventsAvailable}
-                  />
+                  {isOrganizer && (
+                    <>
+                      <InfoRow
+                        icon={<LayoutGrid size={16} />}
+                        label="Total Events Created"
+                        value={userStats.totalEventsCreated}
+                      />
+                      <InfoRow
+                        icon={<Calendar size={16} />}
+                        label="Published Events"
+                        value={userStats.myPublishedEvents}
+                      />
+                    </>
+                  )}
 
                   <InfoRow
                     icon={<RefreshCcw size={16} />}
@@ -1060,80 +1017,6 @@ export default function Profile() {
                   )}
                 </div>
               </div>
-            </div>
-
-            <div className="bg-white p-8 md:p-10 rounded-[2rem] shadow-lg shadow-slate-200/50 border border-slate-100">
-              <div className="mb-6 border-b border-slate-100 pb-6">
-                <h3 className="text-xl font-black text-slate-950 flex items-center gap-3 mb-1">
-                  <Monitor size={20} className="text-purple-600" />
-                  Security & Sessions
-                </h3>
-                <p className="text-sm text-slate-500 font-medium ml-8">
-                  Review your recent activity, active device, and account access details.
-                </p>
-              </div>
-
-              <div className="space-y-4 mb-8">
-                <div className="flex justify-between items-center py-3 border-b border-slate-50">
-                  <span className="text-sm font-bold text-slate-500">Last password change</span>
-                  <span className="text-sm font-black text-slate-900">
-                    {user.updatedAt ? formatDateLabel(user.updatedAt) : 'Not available'}
-                  </span>
-                </div>
-
-                <div className="flex justify-between items-center py-3 border-b border-slate-50">
-                  <span className="text-sm font-bold text-slate-500">Last login</span>
-                  <span className="text-sm font-black text-slate-900">
-                    Today, {sessionInfo.time}{' '}
-                    <span className="text-[10px] ml-1 text-emerald-600 uppercase tracking-widest">
-                      (Current)
-                    </span>
-                  </span>
-                </div>
-
-                <div className="flex justify-between items-center py-3 border-b border-slate-50">
-                  <span className="text-sm font-bold text-slate-500">Active Device</span>
-                  <span className="text-sm font-black text-slate-900 flex items-center gap-2">
-                    <Monitor size={14} className="text-slate-400" />
-                    {sessionInfo.device}
-                  </span>
-                </div>
-
-                <div className="flex justify-between items-center py-3 border-b border-slate-50">
-                  <span className="text-sm font-bold text-slate-500">Browser</span>
-                  <span className="text-sm font-black text-slate-900">{sessionInfo.browser}</span>
-                </div>
-
-                <div className="flex justify-between items-center py-3 border-b border-slate-50">
-                  <span className="text-sm font-bold text-slate-500">Operating System</span>
-                  <span className="text-sm font-black text-slate-900">{sessionInfo.os}</span>
-                </div>
-
-                <div className="flex justify-between items-center py-3 border-b border-slate-50">
-                  <span className="text-sm font-bold text-slate-500">Timezone</span>
-                  <span className="text-sm font-black text-slate-900 flex items-center gap-2">
-                    <Globe size={14} className="text-slate-400" />
-                    {sessionInfo.timezone}
-                  </span>
-                </div>
-
-                <div className="flex justify-between items-center py-3">
-                  <span className="text-sm font-bold text-slate-500">Session Status</span>
-                  <span className="inline-flex items-center gap-1 text-xs font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md uppercase tracking-wider">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    Secure Session
-                  </span>
-                </div>
-              </div>
-
-              <button
-                onClick={handleSignOutAllDevices}
-                type="button"
-                className="w-full py-4 rounded-xl border-2 border-slate-200 text-slate-600 font-black text-sm hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 transition-colors flex items-center justify-center gap-2 active:scale-95"
-              >
-                <LogOut size={16} />
-                Sign out of all devices
-              </button>
             </div>
           </form>
         </div>

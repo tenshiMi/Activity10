@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../lib/api';
 import {
@@ -90,7 +90,6 @@ const EventCard = ({ event, featured = false, isGoing, soldCount }) => {
           <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500">
             <Users size={14} className="text-blue-500" /> {soldCount} people going
           </span>
-          {/* 🌟 FIX: Dynamic Organizer Name fetched from Backend! */}
           <span className="text-[11px] font-bold text-slate-400 truncate max-w-[130px] text-right" title={event.organizer?.name || 'Harmony Events'}>
             by {event.organizer?.name || event.organizerName || 'Harmony Events'}
           </span>
@@ -149,7 +148,6 @@ const EventCard = ({ event, featured = false, isGoing, soldCount }) => {
 
 export default function Home() {
   const [events, setEvents] = useState([]);
-  const [allAttendees, setAllAttendees] = useState([]);
   const [myRegistrations, setMyRegistrations] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -161,18 +159,15 @@ export default function Home() {
 
   const [isFirstLogin] = useState(() => !sessionStorage.getItem('hasSeenWelcome'));
 
-  const fetchHomeData = async (showLoader = true) => {
+  const fetchHomeData = useCallback(async (showLoader = true) => {
     try {
       if (showLoader) setLoading(true);
-      const [eventsRes, attendeesRes] = await Promise.all([
-        api.get('/events'),
-        api.get('/attendees')
-      ]);
-
+      
+      const eventsRes = await api.get('/events');
       setEvents(eventsRes.data);
-      setAllAttendees(attendeesRes.data);
 
       if (isLoggedIn && user?.email) {
+        const attendeesRes = await api.get('/attendees');
         const myTix = attendeesRes.data.filter((a) => a.email === user.email && a.status !== 'Cancelled');
         setMyRegistrations(myTix.map((t) => String(t.eventId)));
       }
@@ -181,7 +176,7 @@ export default function Home() {
     } finally {
       if (showLoader) setLoading(false);
     }
-  };
+  }, [isLoggedIn, user?.email]);
 
   useEffect(() => {
     if (isFirstLogin) sessionStorage.setItem('hasSeenWelcome', 'true');
@@ -190,7 +185,7 @@ export default function Home() {
     
     const interval = setInterval(() => { fetchHomeData(false); }, 15000);
     return () => clearInterval(interval);
-  }, [isLoggedIn, user?.email, isFirstLogin]);
+  }, [fetchHomeData, isFirstLogin]);
 
   const publishedEvents = useMemo(() => {
     return events.filter((e) => !e.isArchived && e.status === 'Published');
@@ -200,7 +195,14 @@ export default function Home() {
     return ['All', ...new Set(publishedEvents.map((e) => e.category).filter(Boolean))];
   }, [publishedEvents]);
 
-  const getSoldCount = (eventId) => allAttendees.filter((a) => String(a.eventId) === String(eventId) && a.status !== 'Cancelled').length;
+  const activeEventsCount = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    return publishedEvents.filter(event => event.date >= today).length;
+  }, [publishedEvents]);
+
+  const totalRegistrations = useMemo(() => {
+    return publishedEvents.reduce((sum, event) => sum + (Number(event.ticketsSold) || 0), 0);
+  }, [publishedEvents]);
 
   const filteredEvents = useMemo(() => {
     return publishedEvents.filter((event) => {
@@ -214,15 +216,15 @@ export default function Home() {
   const myUpcomingEvents = filteredEvents.filter((event) => myRegistrations.includes(String(event.id)));
 
   const trendingEvents = useMemo(() => {
-    return [...publishedEvents].sort((a, b) => getSoldCount(b.id) - getSoldCount(a.id)).slice(0, 3);
-  }, [publishedEvents, allAttendees]);
+    return [...publishedEvents]
+      .sort((a, b) => (Number(b.ticketsSold) || 0) - (Number(a.ticketsSold) || 0))
+      .slice(0, 3);
+  }, [publishedEvents]);
 
   const recommendedEvents = useMemo(() => {
     if (selectedCategory !== 'All') return publishedEvents.filter((e) => e.category === selectedCategory).slice(0, 3);
     return publishedEvents.slice(0, 3);
   }, [publishedEvents, selectedCategory]);
-
-  const totalRegistrations = allAttendees.filter((a) => a.status !== 'Cancelled').length;
 
   const scrollToSection = (id) => {
     const element = document.getElementById(id);
@@ -247,10 +249,18 @@ export default function Home() {
             <Sparkles size={14} /> Discover What’s Next
           </div>
 
-          <h1 className="text-4xl md:text-6xl font-extrabold text-gray-900 tracking-tight mb-4 leading-tight">
-            Find events happening{' '}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">near you today.</span>
-          </h1>
+          {/* 🌟 FIX: Personalized Greeting based on Login Status */}
+          {isLoggedIn && user?.name ? (
+            <h1 className="text-4xl md:text-6xl font-extrabold text-gray-900 tracking-tight mb-4 leading-tight">
+              Welcome back, {user.name.split(' ')[0]}!{' '}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">Ready for your next adventure?</span>
+            </h1>
+          ) : (
+            <h1 className="text-4xl md:text-6xl font-extrabold text-gray-900 tracking-tight mb-4 leading-tight">
+              Find events happening{' '}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">near you today.</span>
+            </h1>
+          )}
 
           <p className="text-slate-600 text-base md:text-lg max-w-2xl mb-8 leading-relaxed">
             Discover concerts, festivals, workshops, and more around your area.
@@ -289,10 +299,9 @@ export default function Home() {
             </button>
           </div>
 
-          {/* 🌟 FIX: Dynamic Hero Stats without the hardcoded "++" */}
           <div className="flex flex-wrap items-center justify-center gap-3 text-sm font-semibold text-slate-500">
             <span className="inline-flex items-center gap-2 bg-white/90 border border-slate-200 px-4 py-2 rounded-full shadow-sm text-slate-600">
-              <PartyPopper size={16} className="text-purple-500" /> {publishedEvents.length} active events
+              <PartyPopper size={16} className="text-purple-500" /> {activeEventsCount} active events
             </span>
             <span className="inline-flex items-center gap-2 bg-white/90 border border-slate-200 px-4 py-2 rounded-full shadow-sm text-slate-600">
               <Users size={16} className="text-blue-500" /> {totalRegistrations} attendees
@@ -321,7 +330,7 @@ export default function Home() {
             <div className="flex gap-5 overflow-x-auto pb-2 snap-x snap-mandatory xl:grid xl:grid-cols-3 xl:overflow-visible scrollbar-hide">
               {trendingEvents.map((event) => (
                 <div key={`trending-${event.id}`} className="min-w-[310px] sm:min-w-[360px] xl:min-w-0 snap-start">
-                  <EventCard event={event} featured isGoing={myRegistrations.includes(String(event.id))} soldCount={getSoldCount(event.id)} />
+                  <EventCard event={event} featured isGoing={myRegistrations.includes(String(event.id))} soldCount={Number(event.ticketsSold) || 0} />
                 </div>
               ))}
             </div>
@@ -408,7 +417,7 @@ export default function Home() {
             <div className="flex gap-5 overflow-x-auto pb-2 snap-x snap-mandatory lg:grid lg:grid-cols-3 lg:overflow-visible scrollbar-hide">
               {recommendedEvents.map((event) => (
                 <div key={`recommended-${event.id}`} className="min-w-[310px] sm:min-w-[360px] lg:min-w-0 snap-start">
-                  <EventCard event={event} isGoing={myRegistrations.includes(String(event.id))} soldCount={getSoldCount(event.id)} />
+                  <EventCard event={event} isGoing={myRegistrations.includes(String(event.id))} soldCount={Number(event.ticketsSold) || 0} />
                 </div>
               ))}
             </div>
@@ -437,7 +446,7 @@ export default function Home() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
             {filteredEvents.map((event) => (
-              <EventCard key={event.id} event={event} isGoing={myRegistrations.includes(String(event.id))} soldCount={getSoldCount(event.id)} />
+              <EventCard key={event.id} event={event} isGoing={myRegistrations.includes(String(event.id))} soldCount={Number(event.ticketsSold) || 0} />
             ))}
 
             {filteredEvents.length === 0 && (

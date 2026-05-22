@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { LogOut } from 'lucide-react'; 
 import NotificationBell from './NotificationBell'; 
@@ -7,6 +7,9 @@ import HarmonyLogo from './HarmonyLogo';
 export default function Navbar() {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user') || 'null');
+  
+  // 🌟 NEW: Track scroll position state
+  const [isScrolled, setIsScrolled] = useState(false);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -14,11 +17,31 @@ export default function Navbar() {
     navigate('/login');
   };
 
+  // 🌟 NEW: Listen to window scrolling
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 20) {
+        setIsScrolled(true);
+      } else {
+        setIsScrolled(false);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   // Get the saved avatar or generate the initials avatar
   const displayAvatar = user?.avatarUrl || `https://api.dicebear.com/7.x/initials/svg?seed=${user?.name || 'User'}&backgroundColor=2563eb`;
 
   return (
-    <nav className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-md border-b border-gray-200/80 shadow-sm font-sans">
+    <nav 
+      className={`sticky top-0 z-50 w-full font-sans transition-all duration-300 ${
+        isScrolled 
+          ? 'bg-[rgba(255,255,255,0.7)] backdrop-blur-[12px] border-b border-[rgba(99,102,241,0.08)] shadow-[0_6px_20px_rgba(0,0,0,0.06)]' 
+          : 'bg-white/80 backdrop-blur-md border-b border-gray-200/80 shadow-sm'
+      }`}
+    >
       
       {/* 🌟 INJECTED SLOW 3D FLIP CSS */}
       <style>{`
@@ -37,7 +60,7 @@ export default function Navbar() {
       `}</style>
 
       <div className="max-w-[1600px] mx-auto px-6">
-        <div className="flex justify-between items-center h-20">
+        <div className={`flex justify-between items-center transition-all duration-300 ${isScrolled ? 'h-16' : 'h-20'}`}>
           
           {/* 🌟 UPGRADED: Left Side Premium Custom Logo with 3D Flip */}
           <Link to="/" className="flex items-center gap-3 group perspective-1000">

@@ -14,7 +14,7 @@ export class AuthService {
     service: 'gmail',
     auth: {
       user: 'harmony.events9@gmail.com',
-      pass: 'ygzh ucbr haze gvhv',
+      pass: 'daui vsir avzl bgbw',
     },
   });
 

@@ -5,7 +5,8 @@ import {
   Plus, Calendar, MapPin, Settings, Archive, Ticket,
   Image as ImageIcon, TrendingUp, CheckCircle,
   Search, Filter, LayoutGrid, List, Eye, X,
-  Users, Wallet, Sparkles, ArrowUpRight, RotateCcw
+  Users, Wallet, Sparkles, ArrowUpRight, RotateCcw,
+  HelpCircle // 🌟 Added HelpCircle icon for the new modal
 } from 'lucide-react';
 
 export default function OrganizerDashboard() {
@@ -13,6 +14,10 @@ export default function OrganizerDashboard() {
   const [allAttendees, setAllAttendees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState({ show: false, type: 'success', title: '', message: '' });
+  
+  // 🌟 NEW: Added state for the custom confirmation modal
+  const [confirmDialog, setConfirmDialog] = useState({ show: false, title: '', message: '', onConfirm: null, confirmText: '', confirmColor: '' });
+  
   const navigate = useNavigate();
 
   const user = JSON.parse(localStorage.getItem('user'));
@@ -103,7 +108,18 @@ export default function OrganizerDashboard() {
     return eventDateTime < new Date();
   };
 
-  const handleArchive = async (event) => {
+  // 🌟 FIX: Updated handleArchive to use the custom modal
+  const executeArchive = async (event) => {
+    setConfirmDialog({ show: false }); // Close the modal
+    try {
+      await api.delete(`/events/${event.id}`);
+      setEvents(events.map(e => e.id === event.id ? { ...e, isArchived: !event.isArchived } : e));
+    } catch (error) {
+      setModal({ show: true, type: 'error', title: 'Action Failed', message: `Failed to update event status.` });
+    }
+  };
+
+  const handleArchiveClick = (event) => {
     const isPast = isEventDone(event.date, event.time);
     const ticketsSold = getTicketsSold(event);
     const actionText = event.isArchived ? "unarchive" : "archive";
@@ -118,14 +134,15 @@ export default function OrganizerDashboard() {
       return;
     }
 
-    if (window.confirm(`Are you sure you want to ${actionText} this event?`)) {
-      try {
-        await api.delete(`/events/${event.id}`);
-        setEvents(events.map(e => e.id === event.id ? { ...e, isArchived: !event.isArchived } : e));
-      } catch (error) {
-        setModal({ show: true, type: 'error', title: 'Action Failed', message: `Failed to ${actionText} event.` });
-      }
-    }
+    // 🌟 Show the custom confirm modal instead of window.confirm
+    setConfirmDialog({
+      show: true, 
+      title: `${event.isArchived ? 'Restore' : 'Archive'} "${event.title}"?`, 
+      message: event.isArchived ? 'This will make the event visible to attendees again.' : 'This will hide the event from the platform.',
+      confirmText: `Yes, ${event.isArchived ? 'Restore' : 'Archive'}`, 
+      confirmColor: 'bg-orange-500 hover:bg-orange-600', 
+      onConfirm: () => executeArchive(event)
+    });
   };
 
   const clearAllFilters = () => {
@@ -551,7 +568,7 @@ export default function OrganizerDashboard() {
                         </button>
 
                         <button
-                          onClick={() => handleArchive(event)}
+                          onClick={() => handleArchiveClick(event)}
                           disabled={disableArchive}
                           className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all text-sm font-bold ${
                             disableArchive
@@ -633,7 +650,7 @@ export default function OrganizerDashboard() {
                             </button>
 
                             <button
-                              onClick={() => handleArchive(event)}
+                              onClick={() => handleArchiveClick(event)}
                               disabled={disableArchive}
                               title={disableArchive ? "Cannot archive an event that has sold tickets." : "Archive Event"}
                               className={`p-2.5 rounded-xl transition cursor-pointer border ${disableArchive ? 'text-gray-300 bg-gray-50 border-gray-100 cursor-not-allowed' : event.isArchived ? 'text-emerald-600 bg-emerald-50 border-emerald-100 hover:bg-emerald-100' : 'text-orange-500 bg-orange-50 border-orange-100 hover:bg-orange-100'}`}
@@ -736,6 +753,27 @@ export default function OrganizerDashboard() {
                   className="px-6 py-3 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 transition cursor-pointer shadow-sm"
                 >
                   Done
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 🌟 NEW: Premium Confirmation Modal for Archiving */}
+        {confirmDialog.show && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <div className="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm text-center animate-in zoom-in duration-200 scale-100">
+              <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 bg-orange-50 border-8 border-orange-100/50 text-orange-500">
+                <HelpCircle size={32} strokeWidth={2.5} />
+              </div>
+              <h2 className="text-2xl font-extrabold mb-2 text-gray-900 tracking-tight">{confirmDialog.title}</h2>
+              <p className="text-gray-500 font-medium mb-8 leading-relaxed">{confirmDialog.message}</p>
+              <div className="flex gap-3">
+                <button onClick={() => setConfirmDialog({ show: false })} className="flex-1 py-3.5 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors">
+                  Cancel
+                </button>
+                <button onClick={confirmDialog.onConfirm} className={`flex-1 py-3.5 text-white rounded-xl font-bold transition-all shadow-md active:scale-95 ${confirmDialog.confirmColor}`}>
+                  {confirmDialog.confirmText}
                 </button>
               </div>
             </div>

@@ -160,7 +160,6 @@ export default function Attendees() {
     return Array.from(latestTicketsMap.values());
   }, [attendees, selectedEventId]);
 
-  // 🌟 SMART LOGIC: Dynamically calculates if they are a "No Show" based on the clock!
   const getDisplayStatus = useCallback((person) => {
     if (person.status === 'Cancelled') return 'Cancelled';
     if (person.status === 'Checked In') return 'Checked In';
@@ -169,7 +168,6 @@ export default function Attendees() {
     if (!eventStart) return person.status || 'Pending';
 
     const now = new Date();
-    // Late = 30 mins after start. No Show = 4 hours after start.
     const lateThreshold = new Date(eventStart.getTime() + 30 * 60 * 1000);   
     const noShowThreshold = new Date(eventStart.getTime() + 4 * 60 * 60 * 1000); 
 
@@ -281,13 +279,21 @@ export default function Attendees() {
   };
 
   const handleManualCheckIn = async (person) => {
-    if (person.status === 'Checked In') {
+    const displayStatus = getDisplayStatus(person);
+
+    if (displayStatus === 'Checked In') {
       showToast('error', `${person.name} is already checked in.`);
       return;
     }
 
-    if (person.status === 'Cancelled') {
+    if (displayStatus === 'Cancelled') {
       showToast('error', 'Cancelled tickets cannot be checked in.');
+      return;
+    }
+
+    // 🌟 FIX: Safety guard against No Shows
+    if (displayStatus === 'No Show') {
+      showToast('error', 'Cannot check in an attendee marked as No Show.');
       return;
     }
 
@@ -308,7 +314,12 @@ export default function Attendees() {
 
   const handleBulkCheckIn = async () => {
     const selectedPeople = filteredList.filter(p => selectedRows.includes(p.id));
-    const eligible = selectedPeople.filter(p => p.status !== 'Checked In' && p.status !== 'Cancelled');
+    
+    // 🌟 FIX: Ensure No Shows are excluded from bulk check-ins too
+    const eligible = selectedPeople.filter(p => {
+      const status = getDisplayStatus(p);
+      return status !== 'Checked In' && status !== 'Cancelled' && status !== 'No Show';
+    });
 
     if (eligible.length === 0) {
       showToast('error', 'No eligible attendees selected for check-in.');
@@ -611,6 +622,7 @@ export default function Attendees() {
                       const displayStatus = getDisplayStatus(person);
                       const isCancelled = displayStatus === 'Cancelled';
                       const isCheckedIn = displayStatus === 'Checked In';
+                      const isNoShow = displayStatus === 'No Show'; // 🌟 Computed No Show
                       const rowSelected = selectedRows.includes(person.id);
                       
                       const checkInDateValue = getCheckInDate(person);
@@ -688,19 +700,26 @@ export default function Attendees() {
 
                             <td className="px-6 py-4">
                               <div className="flex items-center justify-end gap-3">
+                                {/* 🌟 FIX: Handle UI for No Show / Check In properly */}
                                 {isCancelled ? (
                                   <span className="text-xs font-bold text-gray-400 px-3 py-1.5">Voided</span>
-                                ) : !isCheckedIn ? (
-                                  <button
-                                    onClick={() => handleManualCheckIn(person)}
-                                    className="flex items-center gap-1.5 px-4 py-1.5 bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-700 border border-transparent rounded-lg text-xs font-bold transition-all shadow-sm"
-                                  >
-                                    <CheckCircle2 size={14} /> Check In
-                                  </button>
-                                ) : (
+                                ) : isCheckedIn ? (
                                   <span className="text-xs font-bold text-gray-400 px-3 py-1.5 flex items-center gap-1">
                                     <CheckCircle2 size={14} /> Done
                                   </span>
+                                ) : (
+                                  <button
+                                    onClick={() => handleManualCheckIn(person)}
+                                    disabled={isNoShow}
+                                    title={isNoShow ? 'Cannot check in after event has ended' : 'Check In Attendee'}
+                                    className={`flex items-center gap-1.5 px-4 py-1.5 border border-transparent rounded-lg text-xs font-bold transition-all shadow-sm ${
+                                      isNoShow
+                                        ? 'bg-gray-50 text-gray-400 cursor-not-allowed border-gray-200'
+                                        : 'bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-700'
+                                    }`}
+                                  >
+                                    <CheckCircle2 size={14} /> Check In
+                                  </button>
                                 )}
 
                                 <button

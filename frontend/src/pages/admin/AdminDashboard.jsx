@@ -73,7 +73,6 @@ export default function AdminDashboard() {
         type: 'APPROVAL'
       });
 
-      // 🌟 NEW: Broadcast to ALL attendees that a new event just dropped!
       try {
         await api.post('/notifications/broadcast/attendees', {
           title: 'New Event Alert! 🎉',
@@ -146,8 +145,10 @@ export default function AdminDashboard() {
   };
 
   const normalizeStatus = (status) => String(status || '').trim().toLowerCase();
+  
+  // 🌟 FIX: Updated logic to accurately catch "Pending Approval" events!
   const isPublishedEvent = (event) => !event?.isArchived && normalizeStatus(event?.status) === 'published';
-  const isPendingEvent = (event) => !event?.isArchived && normalizeStatus(event?.status) === 'pending';
+  const isPendingEvent = (event) => !event?.isArchived && normalizeStatus(event?.status).includes('pending');
   const isRejectedEvent = (event) => normalizeStatus(event?.status) === 'rejected';
 
   const filteredEvents = events.filter(event => {
